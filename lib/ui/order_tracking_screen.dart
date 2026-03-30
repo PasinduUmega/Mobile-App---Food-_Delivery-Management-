@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../models.dart';
 import '../services/api.dart';
 
@@ -40,17 +41,16 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
   Future<void> _initialLoad() async {
     try {
       debugPrint('📍 OrderTracking: Loading store and delivery info for order ${widget.order.orderId}');
+      
+      // Check for valid API Key (Placeholder check)
+      // Note: This is a heuristic, real check happens at platform level
+      
       if (widget.order.storeId != null) {
         _store = await _api.getStore(id: widget.order.storeId!);
-        debugPrint('📍 OrderTracking: Store loaded - ${_store?.name} (${_store?.latitude}, ${_store?.longitude})');
+        debugPrint('📍 OrderTracking: Store loaded - ${_store?.name}');
       }
       _delivery = await _api.getDeliveryByOrderId(orderId: widget.order.orderId);
-      if (_delivery != null) {
-        debugPrint('📍 OrderTracking: Delivery found - Driver: ${_delivery?.driverName}, Status: ${_delivery?.status}');
-        debugPrint('📍 OrderTracking: Delivery location - (${_delivery?.currentLatitude}, ${_delivery?.currentLongitude})');
-      } else {
-        debugPrint('📍 OrderTracking: No delivery assigned yet');
-      }
+      
       _updateMarkers();
       if (mounted) setState(() { _error = null; });
     } catch (e) {
@@ -58,6 +58,19 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
       if (mounted) setState(() { _error = e.toString(); });
     } finally {
       if (mounted) setState(() { _loading = false; });
+    }
+  }
+
+  Future<void> _launchCaller(String phone) async {
+    final Uri url = Uri(scheme: 'tel', path: phone);
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url);
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not launch dialer for $phone')),
+        );
+      }
     }
   }
 
@@ -217,7 +230,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                 if (_delivery?.driverPhone != null)
                   IconButton(
                     icon: const Icon(Icons.phone, color: Colors.green),
-                    onPressed: () {}, // TODO: Launch dialer
+                    onPressed: () => _launchCaller(_delivery!.driverPhone!),
                   ),
               ],
             ),
