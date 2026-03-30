@@ -251,15 +251,28 @@ class _RestaurantManagementDashboardState
                         style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18),
                       ),
                     ),
-                    TextButton.icon(
-                      onPressed: () => _edit(store),
-                      icon: const Icon(Icons.edit, size: 14, color: Color(0xFFFF6A00)),
-                      label: const Text('EDIT', style: TextStyle(color: Color(0xFFFF6A00), fontSize: 11, fontWeight: FontWeight.bold)),
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        backgroundColor: const Color(0xFFFF6A00).withOpacity(0.05),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
+                    Row(
+                      children: [
+                        TextButton.icon(
+                          onPressed: () => _edit(store),
+                          icon: const Icon(Icons.edit, size: 14, color: Color(0xFFFF6A00)),
+                          label: const Text('EDIT', style: TextStyle(color: Color(0xFFFF6A00), fontSize: 11, fontWeight: FontWeight.bold)),
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            backgroundColor: const Color(0xFFFF6A00).withOpacity(0.05),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        IconButton(
+                          onPressed: () => _delete(store),
+                          icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red),
+                          style: IconButton.styleFrom(
+                            backgroundColor: Colors.red.withOpacity(0.05),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),

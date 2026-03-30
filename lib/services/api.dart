@@ -453,12 +453,25 @@ class ApiClient {
     }
   }
 
+  Future<void> createInventory({required int menuItemId, int quantity = 0}) async {
+    final uri = Uri.parse('$baseUrl/api/inventory');
+    final resp = await _http.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'menuItemId': menuItemId, 'quantity': quantity}),
+    );
+    final body = _decode(resp);
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
+      throw ApiException(body['error']?.toString() ?? 'Failed to create inventory record');
+    }
+  }
+
   Future<bool> deleteInventory({required int id}) async {
     final uri = Uri.parse('$baseUrl/api/inventory/$id');
     final resp = await _http.delete(uri);
     final body = _decode(resp);
     if (resp.statusCode < 200 || resp.statusCode >= 300) {
-      throw ApiException(body['error']?.toString() ?? 'Failed to delete inventory');
+      throw ApiException(body['error']?.toString() ?? 'Failed to delete inventory record');
     }
     return body['deleted'] == true;
   }

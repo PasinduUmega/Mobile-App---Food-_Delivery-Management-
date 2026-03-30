@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../models.dart';
 import '../services/api.dart';
 
@@ -104,6 +105,28 @@ class _DeliveryMapScreenState extends State<DeliveryMapScreen> {
     }
   }
 
+  Future<void> _launchNavigation() async {
+    final lat = widget.order.deliveryLatitude;
+    final lng = widget.order.deliveryLongitude;
+    if (lat == null || lng == null) return;
+
+    final url = 'google.navigation:q=$lat,$lng';
+    final appleUrl = 'http://maps.apple.com/?daddr=$lat,$lng';
+    
+    try {
+      if (await canLaunchUrl(Uri.parse(url))) {
+        await launchUrl(Uri.parse(url));
+      } else if (await canLaunchUrl(Uri.parse(appleUrl))) {
+        await launchUrl(Uri.parse(appleUrl));
+      } else {
+        final webUrl = 'https://www.google.com/maps/dir/?api=1&destination=$lat,$lng';
+        await launchUrl(Uri.parse(webUrl), mode: LaunchMode.externalApplication);
+      }
+    } catch (e) {
+      debugPrint('Navigation Launch Error: $e');
+    }
+  }
+
   void _updateMarkers() {
     final newMarkers = <Marker>{};
 
@@ -197,19 +220,18 @@ class _DeliveryMapScreenState extends State<DeliveryMapScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
                         ElevatedButton.icon(
-                          onPressed: () {
-                            debugPrint('Navigate button pressed');
-                          }, // TODO: Launch Maps for Navigation
+                          onPressed: _launchNavigation,
                           icon: const Icon(Icons.navigation),
                           label: const Text('Navigate'),
+                          style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white),
                         ),
                         ElevatedButton(
                           onPressed: () async {
                              try {
                                String newStatus = widget.delivery.status == 'PENDING' ? 'PICKED_UP' : 'DELIVERED';
-                               debugPrint('🗺️ Updating delivery status: ${widget.delivery.status} -> $newStatus');
+                               debugPrint('🗺️ Updating delivery status: ${widget.delivery.id} -> $newStatus');
                                await _api.updateDelivery(id: widget.delivery.id, status: newStatus);
-                               if (mounted) Navigator.pop(context);
+                               if (mounted) Navigator.pop(context, true);
                              } catch (e) {
                                debugPrint('❌ Status update error: $e');
                                if (mounted) {

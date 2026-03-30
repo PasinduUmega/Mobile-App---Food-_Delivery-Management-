@@ -65,6 +65,49 @@ class _InventoryManagementDashboardState extends State<InventoryManagementDashbo
     }
   }
 
+  Future<void> _delete(InventoryItem item) async {
+    final yes = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Remove Tracking?'),
+        content: Text('Stop tracking stock for "${item.menuItemName}"? This won\'t delete the item itself.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Remove')),
+        ],
+      ),
+    );
+    if (yes != true) return;
+    try {
+      await _api.deleteInventory(id: item.id);
+      _load();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+    }
+  }
+
+  Future<void> _create() async {
+    final stores = await _api.listStores();
+    if (!mounted) return;
+
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (ctx) => _AddInventoryDialog(stores: stores, api: _api),
+    );
+
+    if (result != null) {
+      try {
+        await _api.createInventory(
+          menuItemId: result['menuItemId'],
+          quantity: result['quantity'],
+        );
+        _load();
+      } catch (e) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -72,8 +115,15 @@ class _InventoryManagementDashboardState extends State<InventoryManagementDashbo
         title: const Text('Stock & Inventory'),
         actions: [IconButton(onPressed: _load, icon: const Icon(Icons.refresh))],
       ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _create,
+        backgroundColor: const Color(0xFFFF6A00),
+        icon: const Icon(Icons.add_box_outlined),
+        label: const Text('Add Tracking'),
+      ),
       body: _loading 
         ? const Center(child: CircularProgressIndicator())
+// ... (rest of build remains same, but I need to add the delete button to items)
         : CustomScrollView(
             slivers: [
               // Statistics
@@ -179,6 +229,10 @@ class _InventoryManagementDashboardState extends State<InventoryManagementDashbo
                                     icon: const Icon(Icons.edit_note, color: Colors.blue),
                                     onPressed: () => _updateQuantity(inv),
                                   ),
+                                  IconButton(
+                                    icon: const Icon(Icons.delete_outline, color: Colors.red),
+                                    onPressed: () => _delete(inv),
+                                  ),
                                 ],
                               ),
                             ),
@@ -210,6 +264,88 @@ class _InventoryManagementDashboardState extends State<InventoryManagementDashbo
           Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
         ],
       ),
+    );
+  }
+}
+
+class _AddInventoryDialog extends StatefulWidget {
+  final List<Store> stores;
+  final ApiClient api;
+  const _AddInventoryDialog({required this.stores, required this.api});
+
+  @override
+  State<_AddInventoryDialog> createState() => _AddInventoryDialogState();
+}
+
+class _AddInventoryDialogState extends State<_AddInventoryDialog> {
+  Store? _selectedStore;
+  MenuItem? _selectedItem;
+  List<MenuItem> _items = [];
+  bool _loadingItems = false;
+  final _qtyCtrl = TextEditingController(text: '0');
+
+  Future<void> _loadItems(Store store) async {
+    setState(() { _loadingItems = true; _selectedItem = null; });
+    try {
+      final items = await widget.api.getStoreMenu(storeId: store.id);
+      if (mounted) setState(() { _items = items; _loadingItems = false; });
+    } catch (e) {
+      if (mounted) setState(() { _loadingItems = false; });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Add Stock Tracking'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            DropdownButtonFormField<Store>(
+              value: _selectedStore,
+              decoration: const InputDecoration(labelText: 'Restaurant'),
+              items: widget.stores.map((s) => DropdownMenuItem(value: s, child: Text(s.name))).toList(),
+              onChanged: (s) {
+                if (s != null) {
+                  setState(() => _selectedStore = s);
+                  _loadItems(s);
+                }
+              },
+            ),
+            const SizedBox(height: 16),
+            if (_loadingItems)
+              const CircularProgressIndicator()
+            else if (_items.isNotEmpty)
+              DropdownButtonFormField<MenuItem>(
+                value: _selectedItem,
+                decoration: const InputDecoration(labelText: 'Menu Item'),
+                items: _items.map((m) => DropdownMenuItem(value: m, child: Text(m.name))).toList(),
+                onChanged: (m) => setState(() => _selectedItem = m),
+              )
+            else if (_selectedStore != null)
+              const Text('No items found for this store', style: TextStyle(color: Colors.red, fontSize: 12)),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _qtyCtrl,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(labelText: 'Initial Quantity'),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+        FilledButton(
+          onPressed: _selectedItem == null ? null : () {
+            Navigator.pop(context, {
+              'menuItemId': _selectedItem!.id,
+              'quantity': int.tryParse(_qtyCtrl.text) ?? 0,
+            });
+          },
+          child: const Text('Continue'),
+        ),
+      ],
     );
   }
 }

@@ -225,7 +225,17 @@ class _PaymentManagementDashboardState
             ),
           ],
         ),
-        trailing: const Icon(Icons.chevron_right, color: Colors.grey, size: 16),
+        trailing: PopupMenuButton<String>(
+          icon: const Icon(Icons.more_vert, color: Colors.grey, size: 20),
+          onSelected: (v) {
+            if (v == 'edit') _edit(payment);
+            if (v == 'delete') _delete(payment);
+          },
+          itemBuilder: (_) => const [
+            PopupMenuItem(value: 'edit', child: Text('Edit Status')),
+            PopupMenuItem(value: 'delete', child: Text('Delete Record', style: TextStyle(color: Colors.red))),
+          ],
+        ),
         onTap: () => _edit(payment),
       ),
     );
