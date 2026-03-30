@@ -1,0 +1,8 @@
+{
+  "name": "food_delivery",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "cd backend && npm run dev",
+    "dev": "cd backend && npm run dev"
+  }
+}
