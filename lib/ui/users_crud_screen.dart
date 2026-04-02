@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models.dart';
 import '../services/api.dart';
+import '../services/validators.dart';
 
 class UsersCrudScreen extends StatefulWidget {
   const UsersCrudScreen({super.key});
@@ -178,6 +179,7 @@ class _UserEditDialog extends StatefulWidget {
 class _UserEditDialogState extends State<_UserEditDialog> {
   late final TextEditingController _nameCtrl;
   late final TextEditingController _emailCtrl;
+  late final TextEditingController _mobileCtrl;
   bool _submitting = false;
 
   @override
@@ -186,32 +188,57 @@ class _UserEditDialogState extends State<_UserEditDialog> {
     final u = widget.existing;
     _nameCtrl = TextEditingController(text: u?.name ?? '');
     _emailCtrl = TextEditingController(text: u?.email ?? '');
+    _mobileCtrl = TextEditingController(text: u?.mobile ?? '');
   }
 
   @override
   void dispose() {
     _nameCtrl.dispose();
     _emailCtrl.dispose();
+    _mobileCtrl.dispose();
     super.dispose();
   }
 
   Future<void> _submit() async {
-    final name = _nameCtrl.text.trim();
-    final email = _emailCtrl.text.trim();
-    if (name.isEmpty || email.isEmpty) {
-      _showError('Name and email are required');
+    final name = _nameCtrl.text;
+    final email = _emailCtrl.text;
+    final mobile = _mobileCtrl.text.trim();
+
+    // Validate name
+    var error = Validators.validateName(name);
+    if (error != null) {
+      _showError(error);
+      return;
+    }
+
+    // Validate email
+    error = Validators.validateEmail(email);
+    if (error != null) {
+      _showError(error);
+      return;
+    }
+
+    // Validate mobile number if provided
+    error = Validators.validateMobileNumber(mobile.isEmpty ? null : mobile);
+    if (error != null) {
+      _showError(error);
       return;
     }
 
     setState(() => _submitting = true);
     try {
       if (widget.existing == null) {
-        await widget.api.createUser(name: name, email: email);
+        await widget.api.createUser(
+          name: name.trim(),
+          email: email.trim(),
+          mobile: mobile.isNotEmpty ? mobile : null,
+        );
       } else {
         await widget.api.updateUser(
           id: widget.existing!.id,
-          name: name,
-          email: email,
+          name: name.trim(),
+          email: email.trim(),
+          mobile: mobile.isNotEmpty ? mobile : null,
         );
       }
       if (!mounted) return;
@@ -237,11 +264,38 @@ class _UserEditDialogState extends State<_UserEditDialog> {
         children: [
           TextField(
             controller: _nameCtrl,
-            decoration: const InputDecoration(labelText: 'Name'),
+            decoration: InputDecoration(
+              labelText: 'Name',
+              hintText: 'Full name (min 2 chars)',
+              errorText: _nameCtrl.text.isNotEmpty
+                  ? Validators.validateName(_nameCtrl.text)
+                  : null,
+            ),
+            onChanged: (_) => setState(() {}),
           ),
           TextField(
             controller: _emailCtrl,
-            decoration: const InputDecoration(labelText: 'Email'),
+            keyboardType: TextInputType.emailAddress,
+            decoration: InputDecoration(
+              labelText: 'Email',
+              hintText: 'user@example.com',
+              errorText: _emailCtrl.text.isNotEmpty
+                  ? Validators.validateEmail(_emailCtrl.text)
+                  : null,
+            ),
+            onChanged: (_) => setState(() {}),
+          ),
+          TextField(
+            controller: _mobileCtrl,
+            keyboardType: TextInputType.phone,
+            decoration: InputDecoration(
+              labelText: 'Mobile Number',
+              hintText: 'Enter 10-digit number',
+              errorText: _mobileCtrl.text.isNotEmpty
+                  ? Validators.validateMobileNumber(_mobileCtrl.text)
+                  : null,
+            ),
+            onChanged: (_) => setState(() {}),
           ),
         ],
       ),

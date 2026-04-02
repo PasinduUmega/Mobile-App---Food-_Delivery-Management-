@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:geolocator/geolocator.dart';
 
 import '../models.dart';
 import '../services/api.dart';
 import 'payment_method_screen.dart';
+import 'widgets/app_feedback.dart';
 
 /// Payment & checkout dashboard
 class PaymentDashboard extends StatefulWidget {
@@ -40,22 +40,13 @@ class _PaymentDashboardState extends State<PaymentDashboard> {
     });
 
     try {
-      Position? pos;
-      try {
-        pos = await Geolocator.getCurrentPosition(timeLimit: const Duration(seconds: 5));
-      } catch (e) {
-        debugPrint('Location capture failed: $e');
-      }
-
-      // Create order
+      // Create order without location
       final order = await _api.createOrder(
         items: widget.cartItems,
         userId: widget.user.id,
         storeId: widget.selectedStore.id,
         deliveryFee: widget.deliveryFee,
         currency: 'LKR',
-        deliveryLatitude: pos?.latitude,
-        deliveryLongitude: pos?.longitude,
       );
 
       if (!mounted) return;
@@ -69,17 +60,13 @@ class _PaymentDashboardState extends State<PaymentDashboard> {
 
       if (result == true) {
         if (!mounted) return;
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Payment successful!')));
+        AppFeedback.success(context, 'Payment completed. Enjoy your meal!');
         Navigator.of(context).popUntil((route) => route.isFirst);
       }
     } catch (e) {
-      setState(() => _error = e.toString());
+      setState(() => _error = 'Please check your connection and try again.');
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error: ${e.toString()}')));
+        AppFeedback.error(context, 'Could not create your order. Try again.');
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -89,7 +76,10 @@ class _PaymentDashboardState extends State<PaymentDashboard> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Order Summary'), elevation: 1),
+      appBar: AppBar(
+        title: const Text('Checkout'),
+        elevation: 1,
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -141,7 +131,7 @@ class _PaymentDashboardState extends State<PaymentDashboard> {
 
             // Order items
             Text(
-              'Order Items',
+              'Your order',
               style: Theme.of(
                 context,
               ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
@@ -163,7 +153,7 @@ class _PaymentDashboardState extends State<PaymentDashboard> {
                             style: const TextStyle(fontWeight: FontWeight.w600),
                           ),
                           Text(
-                            '${item.qty}x @ \$${item.unitPrice.toStringAsFixed(2)}',
+                            '${item.qty} × LKR ${item.unitPrice.toStringAsFixed(2)} each',
                             style: TextStyle(
                               color: Colors.grey[600],
                               fontSize: 12,
@@ -173,7 +163,7 @@ class _PaymentDashboardState extends State<PaymentDashboard> {
                       ),
                     ),
                     Text(
-                      '\$${(item.qty * item.unitPrice).toStringAsFixed(2)}',
+                      'LKR ${(item.qty * item.unitPrice).toStringAsFixed(2)}',
                       style: const TextStyle(fontWeight: FontWeight.w600),
                     ),
                   ],
@@ -193,15 +183,15 @@ class _PaymentDashboardState extends State<PaymentDashboard> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         const Text('Subtotal'),
-                        Text('\$${widget.subtotal.toStringAsFixed(2)}'),
+                        Text('LKR ${widget.subtotal.toStringAsFixed(2)}'),
                       ],
                     ),
                     const SizedBox(height: 8),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('Delivery Fee'),
-                        Text('\$${widget.deliveryFee.toStringAsFixed(2)}'),
+                        const Text('Delivery'),
+                        Text('LKR ${widget.deliveryFee.toStringAsFixed(2)}'),
                       ],
                     ),
                     const Divider(height: 16),
@@ -216,7 +206,7 @@ class _PaymentDashboardState extends State<PaymentDashboard> {
                           ),
                         ),
                         Text(
-                          '\$${_total.toStringAsFixed(2)}',
+                          'LKR ${_total.toStringAsFixed(2)}',
                           style: TextStyle(
                             fontWeight: FontWeight.w700,
                             fontSize: 16,
@@ -233,7 +223,7 @@ class _PaymentDashboardState extends State<PaymentDashboard> {
 
             // Customer info
             Text(
-              'Delivery To',
+              'Delivering to',
               style: Theme.of(
                 context,
               ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
@@ -289,9 +279,17 @@ class _PaymentDashboardState extends State<PaymentDashboard> {
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: Colors.red[200]!),
                   ),
-                  child: Text(
-                    _error!,
-                    style: TextStyle(color: Colors.red[700]),
+                  child: Row(
+                    children: [
+                      Icon(Icons.info_outline, color: Colors.red[700], size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _error!,
+                          style: TextStyle(color: Colors.red[700]),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -312,7 +310,7 @@ class _PaymentDashboardState extends State<PaymentDashboard> {
                           ),
                         ),
                       )
-                    : const Text('Proceed to Payment Methods'),
+                    : const Text('Choose how to pay'),
               ),
             ),
           ],

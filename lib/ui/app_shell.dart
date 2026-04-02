@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models.dart';
 import 'auth_screen.dart';
 import 'home_dashboard.dart';
+import 'widgets/app_feedback.dart';
 
 /// Main app shell that manages authentication & navigation
 class AppShell extends StatefulWidget {
@@ -34,18 +35,14 @@ class _AppShellState extends State<AppShell> {
   Future<void> _onSignIn(User user) async {
     setState(() => _currentUser = user);
     if (mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Welcome ${user.name}!')));
+      AppFeedback.success(context, 'Welcome back, ${user.name}!');
     }
   }
 
   Future<void> _onSignOut() async {
     setState(() => _currentUser = null);
     if (mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Signed out successfully')));
+      AppFeedback.success(context, 'You’re signed out. See you soon!');
     }
   }
 
@@ -56,10 +53,21 @@ class _AppShellState extends State<AppShell> {
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
-            children: const [
-              CircularProgressIndicator(),
-              SizedBox(height: 16),
-              Text('Loading...'),
+            children: [
+              Icon(
+                Icons.local_dining,
+                size: 48,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              const SizedBox(height: 20),
+              const CircularProgressIndicator(),
+              const SizedBox(height: 16),
+              Text(
+                'Opening Food Rush…',
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+              ),
             ],
           ),
         ),

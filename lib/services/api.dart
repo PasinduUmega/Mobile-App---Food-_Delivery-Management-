@@ -75,6 +75,7 @@ class ApiClient {
     return PayPalCreateResult(
       paymentId: int.tryParse('${body['paymentId']}') ?? 0,
       paypalOrderId: body['paypalOrderId']?.toString() ?? '',
+
       approvalUrl: body['approvalUrl']?.toString() ?? '',
     );
   }
@@ -188,13 +189,14 @@ class ApiClient {
     return const [];
   }
 
-
   Future<OrderSummary> getOrderDetails({required int id}) async {
     final uri = Uri.parse('$baseUrl/api/orders/$id');
     final resp = await _http.get(uri);
     final body = _decode(resp);
     if (resp.statusCode < 200 || resp.statusCode >= 300) {
-      throw ApiException(body['error']?.toString() ?? 'Failed to fetch order details');
+      throw ApiException(
+        body['error']?.toString() ?? 'Failed to fetch order details',
+      );
     }
     return OrderSummary.fromJson(body);
   }
@@ -257,36 +259,53 @@ class ApiClient {
     return User.fromJson(body);
   }
 
-  Future<User> createUser({required String name, required String email}) async {
+  Future<User> createUser({
+    required String name,
+    required String email,
+    String? mobile,
+  }) async {
     final uri = Uri.parse('$baseUrl/api/users');
+    final body = {'name': name, 'email': email};
+    if (mobile != null && mobile.isNotEmpty) {
+      body['mobile'] = mobile;
+    }
     final resp = await _http.post(
       uri,
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'name': name, 'email': email}),
+      body: jsonEncode(body),
     );
-    final body = _decode(resp);
+    final respBody = _decode(resp);
     if (resp.statusCode < 200 || resp.statusCode >= 300) {
-      throw ApiException(body['error']?.toString() ?? 'Failed to create user');
+      throw ApiException(
+        respBody['error']?.toString() ?? 'Failed to create user',
+      );
     }
-    return User.fromJson(body);
+    return User.fromJson(respBody);
   }
 
   Future<User> updateUser({
     required int id,
     required String name,
     required String email,
+    String? mobile,
   }) async {
     final uri = Uri.parse('$baseUrl/api/users/$id');
+    final body = {'name': name, 'email': email};
+    if (mobile != null && mobile.isNotEmpty) {
+      body['mobile'] = mobile;
+    }
     final resp = await _http.put(
       uri,
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'name': name, 'email': email}),
+      body: jsonEncode(body),
     );
-    final body = _decode(resp);
+    final respBody = _decode(resp);
     if (resp.statusCode < 200 || resp.statusCode >= 300) {
-      throw ApiException(body['error']?.toString() ?? 'Failed to update user');
+      throw ApiException(
+        respBody['error']?.toString() ?? 'Failed to update user',
+      );
     }
-    return User.fromJson(body);
+    return User.fromJson(respBody);
   }
 
   Future<bool> deleteUser({required int id}) async {
@@ -382,7 +401,9 @@ class ApiClient {
     );
     final body = _decode(resp);
     if (resp.statusCode < 200 || resp.statusCode >= 300) {
-      throw ApiException(body['error']?.toString() ?? 'Failed to create menu item');
+      throw ApiException(
+        body['error']?.toString() ?? 'Failed to create menu item',
+      );
     }
     return MenuItem.fromJson(body);
   }
@@ -408,7 +429,9 @@ class ApiClient {
     );
     final body = _decode(resp);
     if (resp.statusCode < 200 || resp.statusCode >= 300) {
-      throw ApiException(body['error']?.toString() ?? 'Failed to update menu item');
+      throw ApiException(
+        body['error']?.toString() ?? 'Failed to update menu item',
+      );
     }
     return MenuItem.fromJson(body);
   }
@@ -418,7 +441,9 @@ class ApiClient {
     final resp = await _http.delete(uri);
     final body = _decode(resp);
     if (resp.statusCode < 200 || resp.statusCode >= 300) {
-      throw ApiException(body['error']?.toString() ?? 'Failed to delete menu item');
+      throw ApiException(
+        body['error']?.toString() ?? 'Failed to delete menu item',
+      );
     }
     return body['deleted'] == true;
   }
@@ -428,7 +453,9 @@ class ApiClient {
     final resp = await _http.get(uri);
     final body = _decode(resp);
     if (resp.statusCode < 200 || resp.statusCode >= 300) {
-      throw ApiException(body['error']?.toString() ?? 'Failed to list inventory');
+      throw ApiException(
+        body['error']?.toString() ?? 'Failed to list inventory',
+      );
     }
     final items = body['items'];
     if (items is List) {
@@ -449,11 +476,16 @@ class ApiClient {
     );
     final body = _decode(resp);
     if (resp.statusCode < 200 || resp.statusCode >= 300) {
-      throw ApiException(body['error']?.toString() ?? 'Failed to update inventory');
+      throw ApiException(
+        body['error']?.toString() ?? 'Failed to update inventory',
+      );
     }
   }
 
-  Future<void> createInventory({required int menuItemId, int quantity = 0}) async {
+  Future<void> createInventory({
+    required int menuItemId,
+    int quantity = 0,
+  }) async {
     final uri = Uri.parse('$baseUrl/api/inventory');
     final resp = await _http.post(
       uri,
@@ -462,7 +494,9 @@ class ApiClient {
     );
     final body = _decode(resp);
     if (resp.statusCode < 200 || resp.statusCode >= 300) {
-      throw ApiException(body['error']?.toString() ?? 'Failed to create inventory record');
+      throw ApiException(
+        body['error']?.toString() ?? 'Failed to create inventory record',
+      );
     }
   }
 
@@ -471,7 +505,9 @@ class ApiClient {
     final resp = await _http.delete(uri);
     final body = _decode(resp);
     if (resp.statusCode < 200 || resp.statusCode >= 300) {
-      throw ApiException(body['error']?.toString() ?? 'Failed to delete inventory record');
+      throw ApiException(
+        body['error']?.toString() ?? 'Failed to delete inventory record',
+      );
     }
     return body['deleted'] == true;
   }
@@ -481,7 +517,9 @@ class ApiClient {
     final resp = await _http.get(uri);
     final body = _decode(resp);
     if (resp.statusCode < 200 || resp.statusCode >= 300) {
-      throw ApiException(body['error']?.toString() ?? 'Failed to list deliveries');
+      throw ApiException(
+        body['error']?.toString() ?? 'Failed to list deliveries',
+      );
     }
     final items = body['items'];
     if (items is List) {
@@ -494,11 +532,15 @@ class ApiClient {
   }
 
   Future<DeliveryInfo?> getDeliveryByOrderId({required int orderId}) async {
-    final uri = Uri.parse('$baseUrl/api/deliveries').replace(queryParameters: {'orderId': '$orderId'});
+    final uri = Uri.parse(
+      '$baseUrl/api/deliveries',
+    ).replace(queryParameters: {'orderId': '$orderId'});
     final resp = await _http.get(uri);
     final body = _decode(resp);
     if (resp.statusCode < 200 || resp.statusCode >= 300) {
-      throw ApiException(body['error']?.toString() ?? 'Failed to fetch delivery');
+      throw ApiException(
+        body['error']?.toString() ?? 'Failed to fetch delivery',
+      );
     }
     final items = body['items'];
     if (items is List && items.isNotEmpty) {
@@ -524,7 +566,9 @@ class ApiClient {
     );
     final body = _decode(resp);
     if (resp.statusCode < 200 || resp.statusCode >= 300) {
-      throw ApiException(body['error']?.toString() ?? 'Failed to create delivery');
+      throw ApiException(
+        body['error']?.toString() ?? 'Failed to create delivery',
+      );
     }
     return DeliveryInfo.fromJson(body);
   }
@@ -556,7 +600,9 @@ class ApiClient {
     );
     final body = _decode(resp);
     if (resp.statusCode < 200 || resp.statusCode >= 300) {
-      throw ApiException(body['error']?.toString() ?? 'Failed to update delivery');
+      throw ApiException(
+        body['error']?.toString() ?? 'Failed to update delivery',
+      );
     }
   }
 
@@ -565,7 +611,9 @@ class ApiClient {
     final resp = await _http.delete(uri);
     final body = _decode(resp);
     if (resp.statusCode < 200 || resp.statusCode >= 300) {
-      throw ApiException(body['error']?.toString() ?? 'Failed to delete delivery');
+      throw ApiException(
+        body['error']?.toString() ?? 'Failed to delete delivery',
+      );
     }
     return body['deleted'] == true;
   }
@@ -796,7 +844,123 @@ class ApiClient {
     return body['deleted'] == true;
   }
 
+  // Cart Management Methods
+  Future<ShoppingCart?> getActiveCart({required int userId}) async {
+    final uri = Uri.parse('$baseUrl/api/carts/user/$userId');
+    final resp = await _http.get(uri);
+    final body = _decode(resp);
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
+      throw ApiException(body['error']?.toString() ?? 'Failed to fetch cart');
+    }
+    if (body.isEmpty) return null;
+    return ShoppingCart.fromJson(body);
+  }
 
+  Future<ShoppingCart> createCart({required int userId, int? storeId}) async {
+    final uri = Uri.parse('$baseUrl/api/carts');
+    final resp = await _http.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'userId': userId, 'storeId': storeId}),
+    );
+    final body = _decode(resp);
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
+      throw ApiException(body['error']?.toString() ?? 'Failed to create cart');
+    }
+    return ShoppingCart.fromJson(body);
+  }
+
+  Future<List<DatabaseCartItem>> addToCart({
+    required int cartId,
+    required int productId,
+    required String name,
+    required int qty,
+    required double unitPrice,
+  }) async {
+    final uri = Uri.parse('$baseUrl/api/carts/$cartId/items');
+    final resp = await _http.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'productId': productId,
+        'name': name,
+        'qty': qty,
+        'unitPrice': unitPrice,
+      }),
+    );
+    final body = _decode(resp);
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
+      throw ApiException(body['error']?.toString() ?? 'Failed to add to cart');
+    }
+    final items = body['items'] as List? ?? [];
+    return items
+        .whereType<Map>()
+        .map((e) => DatabaseCartItem.fromJson(e.cast<String, dynamic>()))
+        .toList();
+  }
+
+  Future<List<DatabaseCartItem>> updateCartItem({
+    required int cartId,
+    required int itemId,
+    required int qty,
+  }) async {
+    final uri = Uri.parse('$baseUrl/api/carts/$cartId/items/$itemId');
+    final resp = await _http.put(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'qty': qty}),
+    );
+    final body = _decode(resp);
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
+      throw ApiException(
+        body['error']?.toString() ?? 'Failed to update cart item',
+      );
+    }
+    final items = body['items'] as List? ?? [];
+    return items
+        .whereType<Map>()
+        .map((e) => DatabaseCartItem.fromJson(e.cast<String, dynamic>()))
+        .toList();
+  }
+
+  Future<List<DatabaseCartItem>> removeFromCart({
+    required int cartId,
+    required int itemId,
+  }) async {
+    final uri = Uri.parse('$baseUrl/api/carts/$cartId/items/$itemId');
+    final resp = await _http.delete(uri);
+    final body = _decode(resp);
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
+      throw ApiException(
+        body['error']?.toString() ?? 'Failed to remove from cart',
+      );
+    }
+    final items = body['items'] as List? ?? [];
+    return items
+        .whereType<Map>()
+        .map((e) => DatabaseCartItem.fromJson(e.cast<String, dynamic>()))
+        .toList();
+  }
+
+  Future<void> clearCart({required int cartId}) async {
+    final uri = Uri.parse('$baseUrl/api/carts/$cartId');
+    final resp = await _http.delete(uri);
+    final body = _decode(resp);
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
+      throw ApiException(body['error']?.toString() ?? 'Failed to clear cart');
+    }
+  }
+
+  Future<void> checkoutCart({required int cartId}) async {
+    final uri = Uri.parse('$baseUrl/api/carts/$cartId/checkout');
+    final resp = await _http.post(uri);
+    final body = _decode(resp);
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
+      throw ApiException(
+        body['error']?.toString() ?? 'Failed to checkout cart',
+      );
+    }
+  }
 
   Map<String, dynamic> _decode(http.Response resp) {
     try {

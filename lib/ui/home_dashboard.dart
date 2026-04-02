@@ -38,21 +38,34 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Scaffold(
-      body: _screens[_selectedIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: (index) => setState(() => _selectedIndex = index),
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.restaurant_menu),
-            label: 'Restaurants',
+      body: IndexedStack(
+        index: _selectedIndex,
+        children: _screens,
+      ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _selectedIndex,
+        onDestinationSelected: (index) => setState(() => _selectedIndex = index),
+        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+        height: 68,
+        indicatorColor: cs.primaryContainer,
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.restaurant_menu_outlined),
+            selectedIcon: Icon(Icons.restaurant_menu),
+            label: 'Browse',
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.admin_panel_settings),
+          NavigationDestination(
+            icon: Icon(Icons.dashboard_outlined),
+            selectedIcon: Icon(Icons.dashboard),
             label: 'Admin',
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
+          NavigationDestination(
+            icon: Icon(Icons.person_outline),
+            selectedIcon: Icon(Icons.person),
+            label: 'Profile',
+          ),
         ],
       ),
     );

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models.dart';
 import '../services/api.dart';
+import '../services/validators.dart';
 
 class PaymentsCrudScreen extends StatefulWidget {
   const PaymentsCrudScreen({super.key});
@@ -58,8 +59,14 @@ class _PaymentsCrudScreenState extends State<PaymentsCrudScreen> {
         title: const Text('Delete payment?'),
         content: Text('Payment #${p.id} (order ${p.orderId})'),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Delete')),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Delete'),
+          ),
         ],
       ),
     );
@@ -67,11 +74,15 @@ class _PaymentsCrudScreenState extends State<PaymentsCrudScreen> {
     try {
       await _api.deletePayment(id: p.id);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Deleted')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Deleted')));
       await _reload();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.toString())));
     }
   }
 
@@ -81,6 +92,7 @@ class _PaymentsCrudScreenState extends State<PaymentsCrudScreen> {
       builder: (_) => _PaymentEditDialog(existing: existing, api: _api),
     );
   }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -89,7 +101,10 @@ class _PaymentsCrudScreenState extends State<PaymentsCrudScreen> {
       appBar: AppBar(
         title: const Text('Payments (CRUD)'),
         actions: [
-          IconButton(onPressed: _loading ? null : _reload, icon: const Icon(Icons.refresh)),
+          IconButton(
+            onPressed: _loading ? null : _reload,
+            icon: const Icon(Icons.refresh),
+          ),
         ],
       ),
       floatingActionButton: FloatingActionButton(
@@ -101,96 +116,120 @@ class _PaymentsCrudScreenState extends State<PaymentsCrudScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.error_outline, color: cs.error, size: 34),
-                        const SizedBox(height: 10),
-                        Text(_error!, textAlign: TextAlign.center),
-                        const SizedBox(height: 14),
-                        FilledButton(onPressed: _reload, child: const Text('Retry')),
-                      ],
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.error_outline, color: cs.error, size: 34),
+                    const SizedBox(height: 10),
+                    Text(_error!, textAlign: TextAlign.center),
+                    const SizedBox(height: 14),
+                    FilledButton(
+                      onPressed: _reload,
+                      child: const Text('Retry'),
                     ),
-                  ),
-                )
-              : _items.isEmpty
-                  ? const Center(child: Text('No payments yet. Tap + to create one.'))
-                  : ListView.separated(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: _items.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 10),
-                      itemBuilder: (_, i) {
-                        final p = _items[i];
-                        final isPaid = p.status == 'CAPTURED';
-                        final badgeBg = isPaid ? const Color(0xFFE9FFF3) : const Color(0xFFFFF1EA);
-                        final badgeFg = isPaid ? const Color(0xFF11A36A) : const Color(0xFFFF6A00);
-                        return Card(
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(18),
-                            onTap: () => _edit(p),
-                            child: Padding(
-                              padding: const EdgeInsets.all(14),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    width: 44,
-                                    height: 44,
-                                    decoration: BoxDecoration(
-                                      color: badgeBg,
-                                      borderRadius: BorderRadius.circular(16),
-                                    ),
-                                    child: Icon(isPaid ? Icons.check_circle_outline : Icons.payments_outlined, color: badgeFg),
+                  ],
+                ),
+              ),
+            )
+          : _items.isEmpty
+          ? const Center(child: Text('No payments yet. Tap + to create one.'))
+          : ListView.separated(
+              padding: const EdgeInsets.all(16),
+              itemCount: _items.length,
+              separatorBuilder: (_, _) => const SizedBox(height: 10),
+              itemBuilder: (_, i) {
+                final p = _items[i];
+                final isPaid = p.status == 'CAPTURED';
+                final badgeBg = isPaid
+                    ? const Color(0xFFE9FFF3)
+                    : const Color(0xFFFFF1EA);
+                final badgeFg = isPaid
+                    ? const Color(0xFF11A36A)
+                    : const Color(0xFFFF6A00);
+                return Card(
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(18),
+                    onTap: () => _edit(p),
+                    child: Padding(
+                      padding: const EdgeInsets.all(14),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: badgeBg,
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Icon(
+                              isPaid
+                                  ? Icons.check_circle_outline
+                                  : Icons.payments_outlined,
+                              color: badgeFg,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '#${p.id} • Order ${p.orderId}',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w800,
                                   ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          '#${p.id} • Order ${p.orderId}',
-                                          style: const TextStyle(fontWeight: FontWeight.w800),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          '${p.method} • ${p.currency} ${p.amount.toStringAsFixed(2)}',
-                                          style: TextStyle(color: cs.onSurfaceVariant),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                    decoration: BoxDecoration(
-                                      color: badgeBg,
-                                      borderRadius: BorderRadius.circular(999),
-                                    ),
-                                    child: Text(
-                                      p.status,
-                                      style: TextStyle(fontWeight: FontWeight.w800, color: badgeFg, fontSize: 12),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 6),
-                                  PopupMenuButton<String>(
-                                    onSelected: (v) {
-                                      if (v == 'edit') _edit(p);
-                                      if (v == 'delete') _delete(p);
-                                    },
-                                    itemBuilder: (_) => const [
-                                      PopupMenuItem(value: 'edit', child: Text('Edit')),
-                                      PopupMenuItem(value: 'delete', child: Text('Delete')),
-                                    ],
-                                  ),
-                                ],
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  '${p.method} • ${p.currency} ${p.amount.toStringAsFixed(2)}',
+                                  style: TextStyle(color: cs.onSurfaceVariant),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: badgeBg,
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Text(
+                              p.status,
+                              style: TextStyle(
+                                fontWeight: FontWeight.w800,
+                                color: badgeFg,
+                                fontSize: 12,
                               ),
                             ),
                           ),
-                        );
-                      },
+                          const SizedBox(width: 6),
+                          PopupMenuButton<String>(
+                            onSelected: (v) {
+                              if (v == 'edit') _edit(p);
+                              if (v == 'delete') _delete(p);
+                            },
+                            itemBuilder: (_) => const [
+                              PopupMenuItem(value: 'edit', child: Text('Edit')),
+                              PopupMenuItem(
+                                value: 'delete',
+                                child: Text('Delete'),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
+                  ),
+                );
+              },
+            ),
     );
   }
 }
@@ -223,18 +262,29 @@ class _PaymentEditDialogState extends State<_PaymentEditDialog> {
     super.initState();
     final p = widget.existing;
     _orderIdCtrl = TextEditingController(text: p?.orderId.toString() ?? '');
-    _amountCtrl = TextEditingController(text: p?.amount.toStringAsFixed(2) ?? '');
+    _amountCtrl = TextEditingController(
+      text: p?.amount.toStringAsFixed(2) ?? '',
+    );
     _currencyCtrl = TextEditingController(text: p?.currency ?? 'USD');
     _providerCtrl = TextEditingController(text: p?.provider ?? '');
     _providerOrderCtrl = TextEditingController(text: p?.providerOrderId ?? '');
-    _providerCaptureCtrl = TextEditingController(text: p?.providerCaptureId ?? '');
+    _providerCaptureCtrl = TextEditingController(
+      text: p?.providerCaptureId ?? '',
+    );
     _approvalUrlCtrl = TextEditingController(text: p?.approvalUrl ?? '');
     const validMethods = ['PAYPAL', 'CASH_ON_DELIVERY', 'ONLINE_BANKING'];
-    const validStatuses = ['CREATED', 'APPROVAL_PENDING', 'AUTHORIZED', 'CAPTURED', 'FAILED', 'CANCELLED'];
-    
+    const validStatuses = [
+      'CREATED',
+      'APPROVAL_PENDING',
+      'AUTHORIZED',
+      'CAPTURED',
+      'FAILED',
+      'CANCELLED',
+    ];
+
     _method = p?.method ?? 'ONLINE_BANKING';
     if (!validMethods.contains(_method)) _method = 'ONLINE_BANKING';
-    
+
     _status = p?.status ?? 'CREATED';
     if (!validStatuses.contains(_status)) _status = 'CREATED';
   }
@@ -253,22 +303,43 @@ class _PaymentEditDialogState extends State<_PaymentEditDialog> {
 
   Future<void> _submit() async {
     final isNew = widget.existing == null;
-    final orderId = int.tryParse(_orderIdCtrl.text.trim());
-    final amount = double.tryParse(_amountCtrl.text.trim());
-    final currency = _currencyCtrl.text.trim().toUpperCase();
 
-    if (orderId == null || orderId <= 0) {
-      _showError('Order ID is required');
+    // Validate Order ID
+    var error = Validators.validatePositiveInt(
+      _orderIdCtrl.text.trim(),
+      'Order ID',
+    );
+    if (error != null) {
+      _showError(error);
       return;
     }
-    if (amount == null || amount < 0) {
-      _showError('Amount is invalid');
+
+    // Validate Amount
+    error = Validators.validatePrice(_amountCtrl.text.trim());
+    if (error != null) {
+      _showError(error);
       return;
     }
-    if (currency.length != 3) {
-      _showError('Currency must be 3 letters');
+
+    // Validate Currency
+    error = Validators.validateCurrencyCode(_currencyCtrl.text.trim());
+    if (error != null) {
+      _showError(error);
       return;
     }
+
+    // Validate optional URL if provided
+    if (_approvalUrlCtrl.text.trim().isNotEmpty) {
+      error = Validators.validateUrl(_approvalUrlCtrl.text.trim());
+      if (error != null) {
+        _showError(error);
+        return;
+      }
+    }
+
+    final orderId = int.tryParse(_orderIdCtrl.text.trim())!;
+    final amount = double.tryParse(_amountCtrl.text.trim())!;
+    final currency = _currencyCtrl.text.trim().toUpperCase();
 
     setState(() => _submitting = true);
     try {
@@ -277,10 +348,18 @@ class _PaymentEditDialogState extends State<_PaymentEditDialog> {
           orderId: orderId,
           method: _method,
           status: _status,
-          provider: _providerCtrl.text.trim().isEmpty ? null : _providerCtrl.text.trim(),
-          providerOrderId: _providerOrderCtrl.text.trim().isEmpty ? null : _providerOrderCtrl.text.trim(),
-          providerCaptureId: _providerCaptureCtrl.text.trim().isEmpty ? null : _providerCaptureCtrl.text.trim(),
-          approvalUrl: _approvalUrlCtrl.text.trim().isEmpty ? null : _approvalUrlCtrl.text.trim(),
+          provider: _providerCtrl.text.trim().isEmpty
+              ? null
+              : _providerCtrl.text.trim(),
+          providerOrderId: _providerOrderCtrl.text.trim().isEmpty
+              ? null
+              : _providerOrderCtrl.text.trim(),
+          providerCaptureId: _providerCaptureCtrl.text.trim().isEmpty
+              ? null
+              : _providerCaptureCtrl.text.trim(),
+          approvalUrl: _approvalUrlCtrl.text.trim().isEmpty
+              ? null
+              : _approvalUrlCtrl.text.trim(),
           amount: amount,
           currency: currency,
         );
@@ -288,10 +367,18 @@ class _PaymentEditDialogState extends State<_PaymentEditDialog> {
         await widget.api.updatePayment(
           id: widget.existing!.id,
           status: _status,
-          provider: _providerCtrl.text.trim().isEmpty ? null : _providerCtrl.text.trim(),
-          providerOrderId: _providerOrderCtrl.text.trim().isEmpty ? null : _providerOrderCtrl.text.trim(),
-          providerCaptureId: _providerCaptureCtrl.text.trim().isEmpty ? null : _providerCaptureCtrl.text.trim(),
-          approvalUrl: _approvalUrlCtrl.text.trim().isEmpty ? null : _approvalUrlCtrl.text.trim(),
+          provider: _providerCtrl.text.trim().isEmpty
+              ? null
+              : _providerCtrl.text.trim(),
+          providerOrderId: _providerOrderCtrl.text.trim().isEmpty
+              ? null
+              : _providerOrderCtrl.text.trim(),
+          providerCaptureId: _providerCaptureCtrl.text.trim().isEmpty
+              ? null
+              : _providerCaptureCtrl.text.trim(),
+          approvalUrl: _approvalUrlCtrl.text.trim().isEmpty
+              ? null
+              : _approvalUrlCtrl.text.trim(),
         );
       }
       if (mounted) Navigator.of(context).pop(true);
@@ -311,7 +398,9 @@ class _PaymentEditDialogState extends State<_PaymentEditDialog> {
   Widget build(BuildContext context) {
     final isNew = widget.existing == null;
     return AlertDialog(
-      title: Text(isNew ? 'Create payment' : 'Update payment #${widget.existing!.id}'),
+      title: Text(
+        isNew ? 'Create payment' : 'Update payment #${widget.existing!.id}',
+      ),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -319,17 +408,35 @@ class _PaymentEditDialogState extends State<_PaymentEditDialog> {
             TextField(
               controller: _orderIdCtrl,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: 'Order ID'),
+              decoration: InputDecoration(
+                labelText: 'Order ID',
+                hintText: 'Must be > 0',
+                errorText: _orderIdCtrl.text.isNotEmpty
+                    ? Validators.validatePositiveInt(
+                        _orderIdCtrl.text.trim(),
+                        'Order ID',
+                      )
+                    : null,
+              ),
               enabled: isNew,
+              onChanged: (_) => setState(() {}),
             ),
             DropdownButtonFormField<String>(
               initialValue: _method,
               items: const [
                 DropdownMenuItem(value: 'PAYPAL', child: Text('PAYPAL')),
-                DropdownMenuItem(value: 'CASH_ON_DELIVERY', child: Text('CASH_ON_DELIVERY')),
-                DropdownMenuItem(value: 'ONLINE_BANKING', child: Text('ONLINE_BANKING')),
+                DropdownMenuItem(
+                  value: 'CASH_ON_DELIVERY',
+                  child: Text('CASH_ON_DELIVERY'),
+                ),
+                DropdownMenuItem(
+                  value: 'ONLINE_BANKING',
+                  child: Text('ONLINE_BANKING'),
+                ),
               ],
-              onChanged: isNew ? (v) => setState(() => _method = v ?? _method) : null,
+              onChanged: isNew
+                  ? (v) => setState(() => _method = v ?? _method)
+                  : null,
               decoration: const InputDecoration(labelText: 'Method'),
             ),
             const SizedBox(height: 12),
@@ -337,8 +444,14 @@ class _PaymentEditDialogState extends State<_PaymentEditDialog> {
               initialValue: _status,
               items: const [
                 DropdownMenuItem(value: 'CREATED', child: Text('CREATED')),
-                DropdownMenuItem(value: 'APPROVAL_PENDING', child: Text('APPROVAL_PENDING')),
-                DropdownMenuItem(value: 'AUTHORIZED', child: Text('AUTHORIZED')),
+                DropdownMenuItem(
+                  value: 'APPROVAL_PENDING',
+                  child: Text('APPROVAL_PENDING'),
+                ),
+                DropdownMenuItem(
+                  value: 'AUTHORIZED',
+                  child: Text('AUTHORIZED'),
+                ),
                 DropdownMenuItem(value: 'CAPTURED', child: Text('CAPTURED')),
                 DropdownMenuItem(value: 'FAILED', child: Text('FAILED')),
                 DropdownMenuItem(value: 'CANCELLED', child: Text('CANCELLED')),
@@ -348,20 +461,57 @@ class _PaymentEditDialogState extends State<_PaymentEditDialog> {
             ),
             TextField(
               controller: _amountCtrl,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(labelText: 'Amount'),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              decoration: InputDecoration(
+                labelText: 'Amount',
+                hintText: 'Must be > 0',
+                errorText: _amountCtrl.text.isNotEmpty
+                    ? Validators.validatePrice(_amountCtrl.text.trim())
+                    : null,
+              ),
               enabled: isNew,
+              onChanged: (_) => setState(() {}),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _currencyCtrl,
-              decoration: const InputDecoration(labelText: 'Currency'),
+              decoration: InputDecoration(
+                labelText: 'Currency',
+                hintText: 'e.g., USD, LKR',
+                errorText: _currencyCtrl.text.isNotEmpty
+                    ? Validators.validateCurrencyCode(_currencyCtrl.text.trim())
+                    : null,
+              ),
               enabled: isNew,
+              onChanged: (_) => setState(() {}),
             ),
-            TextField(controller: _providerCtrl, decoration: const InputDecoration(labelText: 'Provider')),
-            TextField(controller: _providerOrderCtrl, decoration: const InputDecoration(labelText: 'Provider order id')),
-            TextField(controller: _providerCaptureCtrl, decoration: const InputDecoration(labelText: 'Provider capture id')),
-            TextField(controller: _approvalUrlCtrl, decoration: const InputDecoration(labelText: 'Approval url')),
+            TextField(
+              controller: _providerCtrl,
+              decoration: const InputDecoration(labelText: 'Provider'),
+            ),
+            TextField(
+              controller: _providerOrderCtrl,
+              decoration: const InputDecoration(labelText: 'Provider order id'),
+            ),
+            TextField(
+              controller: _providerCaptureCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Provider capture id',
+              ),
+            ),
+            TextField(
+              controller: _approvalUrlCtrl,
+              decoration: InputDecoration(
+                labelText: 'Approval url',
+                hintText: 'https://...',
+                errorText: _approvalUrlCtrl.text.isNotEmpty
+                    ? Validators.validateUrl(_approvalUrlCtrl.text.trim())
+                    : null,
+              ),
+              onChanged: (_) => setState(() {}),
+            ),
             const SizedBox(height: 8),
             const Text(
               'Tip: setting status to CAPTURED will mark the order PAID and auto-generate a receipt.',
@@ -371,12 +521,24 @@ class _PaymentEditDialogState extends State<_PaymentEditDialog> {
         ),
       ),
       actions: [
-        TextButton(onPressed: _submitting ? null : () => Navigator.of(context).pop(), child: const Text('Cancel')),
+        TextButton(
+          onPressed: _submitting ? null : () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
         _submitting
-            ? const Padding(padding: EdgeInsets.symmetric(horizontal: 16), child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)))
-            : FilledButton(onPressed: _submit, child: Text(isNew ? 'Create' : 'Update')),
+            ? const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16),
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              )
+            : FilledButton(
+                onPressed: _submit,
+                child: Text(isNew ? 'Create' : 'Update'),
+              ),
       ],
     );
   }
 }
-

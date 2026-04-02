@@ -61,25 +61,29 @@ class _OrderManagementDashboardState extends State<OrderManagementDashboard> {
       builder: (ctx) => SimpleDialog(
         title: const Text('Update Order Status'),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-        children: [
-          'PENDING_PAYMENT',
-          'PAID',
-          'PREPARING',
-          'READY',
-          'COMPLETED',
-          'CANCELLED',
-          'FAILED',
-        ]
-            .map(
-              (s) => SimpleDialogOption(
-                onPressed: () => Navigator.pop(ctx, s),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: Text(s, style: const TextStyle(fontWeight: FontWeight.w600)),
-                ),
-              ),
-            )
-            .toList(),
+        children:
+            [
+                  'PENDING_PAYMENT',
+                  'PAID',
+                  'PREPARING',
+                  'READY',
+                  'COMPLETED',
+                  'CANCELLED',
+                  'FAILED',
+                ]
+                .map(
+                  (s) => SimpleDialogOption(
+                    onPressed: () => Navigator.pop(ctx, s),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Text(
+                        s,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ),
+                )
+                .toList(),
       ),
     );
     if (status == null) return;
@@ -88,7 +92,9 @@ class _OrderManagementDashboardState extends State<OrderManagementDashboard> {
       _load();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.toString())));
       }
     }
   }
@@ -99,7 +105,9 @@ class _OrderManagementDashboardState extends State<OrderManagementDashboard> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Protected status. Use CANCELLED or FAILED to delete.'),
+            content: Text(
+              'Protected status. Use CANCELLED or FAILED to delete.',
+            ),
             backgroundColor: Colors.redAccent,
           ),
         );
@@ -111,11 +119,19 @@ class _OrderManagementDashboardState extends State<OrderManagementDashboard> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Delete Order?'),
-        content: Text('Are you sure you want to delete order #${order.orderId}?'),
+        content: Text(
+          'Are you sure you want to delete order #${order.orderId}?',
+        ),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete'),
+          ),
         ],
       ),
     );
@@ -125,7 +141,9 @@ class _OrderManagementDashboardState extends State<OrderManagementDashboard> {
       _load();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.toString())));
       }
     }
   }
@@ -169,29 +187,35 @@ class _OrderManagementDashboardState extends State<OrderManagementDashboard> {
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
-          : _orders.isEmpty 
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.shopping_bag_outlined, size: 64, color: Colors.grey[300]),
-                      const SizedBox(height: 16),
-                      const Text('No orders found'),
-                    ],
+          : _orders.isEmpty
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.shopping_bag_outlined,
+                    size: 64,
+                    color: Colors.grey[300],
                   ),
-                )
-              : ListView.builder(
+                  const SizedBox(height: 16),
+                  const Text('No orders found'),
+                ],
+              ),
+            )
+          : ListView.builder(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
               itemCount: _orders.length,
               itemBuilder: (ctx, i) {
                 final o = _orders[i];
                 final statusColor = _getStatusColor(o.status);
-                
+
                 return Card(
                   margin: const EdgeInsets.only(bottom: 12),
                   elevation: 2,
                   shadowColor: Colors.black12,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18),
+                  ),
                   child: InkWell(
                     borderRadius: BorderRadius.circular(18),
                     onTap: () => _edit(o),
@@ -205,10 +229,16 @@ class _OrderManagementDashboardState extends State<OrderManagementDashboard> {
                             children: [
                               Text(
                                 'Order #${o.orderId}',
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
                               ),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 4,
+                                ),
                                 decoration: BoxDecoration(
                                   color: statusColor.withOpacity(0.1),
                                   borderRadius: BorderRadius.circular(6),
@@ -227,11 +257,18 @@ class _OrderManagementDashboardState extends State<OrderManagementDashboard> {
                           const SizedBox(height: 12),
                           Row(
                             children: [
-                              Icon(Icons.calendar_today, size: 14, color: Colors.grey[600]),
+                              Icon(
+                                Icons.calendar_today,
+                                size: 14,
+                                color: Colors.grey[600],
+                              ),
                               const SizedBox(width: 8),
                               Text(
                                 o.createdAt.toString().substring(0, 16),
-                                style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                                style: TextStyle(
+                                  color: Colors.grey[600],
+                                  fontSize: 13,
+                                ),
                               ),
                               const Spacer(),
                               Text(
@@ -254,7 +291,10 @@ class _OrderManagementDashboardState extends State<OrderManagementDashboard> {
                                 label: 'Track',
                                 onTap: () => Navigator.push(
                                   context,
-                                  MaterialPageRoute(builder: (_) => OrderTrackingScreen(order: o)),
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        OrderTrackingScreen(order: o),
+                                  ),
                                 ),
                               ),
                               const SizedBox(width: 8),
@@ -275,8 +315,20 @@ class _OrderManagementDashboardState extends State<OrderManagementDashboard> {
                               IconButton(
                                 constraints: const BoxConstraints(),
                                 padding: EdgeInsets.zero,
-                                icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 22),
-                                onPressed: ['PAID', 'COMPLETED', 'PREPARING', 'READY'].contains(o.status) ? null : () => _delete(o),
+                                icon: const Icon(
+                                  Icons.delete_outline,
+                                  color: Colors.redAccent,
+                                  size: 22,
+                                ),
+                                onPressed:
+                                    [
+                                      'PAID',
+                                      'COMPLETED',
+                                      'PREPARING',
+                                      'READY',
+                                    ].contains(o.status)
+                                    ? null
+                                    : () => _delete(o),
                               ),
                             ],
                           ),
@@ -351,6 +403,8 @@ class _OrderEditDialogState extends State<_OrderEditDialog> {
   int? _selectedUserId;
   int? _selectedStoreId;
   String _status = 'PENDING_PAYMENT';
+  double? _deliveryLatitude;
+  double? _deliveryLongitude;
 
   final List<Map<String, dynamic>> _cart = [];
 
@@ -373,8 +427,16 @@ class _OrderEditDialogState extends State<_OrderEditDialog> {
         setState(() {
           _users = users;
           _stores = stores;
+          if (widget.existing == null) {
+            _selectedUserId = users.isNotEmpty ? users.first.id : null;
+            _selectedStoreId = stores.isNotEmpty ? stores.first.id : null;
+          }
           _loading = false;
         });
+      }
+
+      if (widget.existing == null && _selectedStoreId != null) {
+        await _loadMenu(_selectedStoreId!);
       }
 
       if (widget.existing != null) {
@@ -385,7 +447,9 @@ class _OrderEditDialogState extends State<_OrderEditDialog> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to initialize: $e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to initialize: $e')));
         Navigator.pop(context);
       }
     }
@@ -417,7 +481,9 @@ class _OrderEditDialogState extends State<_OrderEditDialog> {
     } catch (e) {
       if (mounted) {
         setState(() => _loading = false);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to load details: $e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to load details: $e')));
       }
     }
   }
@@ -429,7 +495,10 @@ class _OrderEditDialogState extends State<_OrderEditDialog> {
     } catch (_) {}
   }
 
-  double get _subtotal => _cart.fold(0.0, (s, it) => s + (it['qty'] as int) * (it['unitPrice'] as double));
+  double get _subtotal => _cart.fold(
+    0.0,
+    (s, it) => s + (it['qty'] as int) * (it['unitPrice'] as double),
+  );
 
   Future<void> _save() async {
     if (_selectedUserId == null) {
@@ -451,13 +520,20 @@ class _OrderEditDialogState extends State<_OrderEditDialog> {
         await widget.api.createOrder(
           userId: _selectedUserId!,
           storeId: _selectedStoreId!,
-          items: _cart.map((e) => CartItem(
-            productId: e['productId'] as int?,
-            name: e['name'] as String,
-            qty: e['qty'] as int,
-            unitPrice: e['unitPrice'] as double,
-          )).toList(),
+          items: _cart
+              .map(
+                (e) => CartItem(
+                  productId: e['productId'] as int?,
+                  name: e['name'] as String,
+                  qty: e['qty'] as int,
+                  unitPrice: e['unitPrice'] as double,
+                ),
+              )
+              .toList(),
           deliveryFee: 200.0,
+          currency: 'LKR',
+          deliveryLatitude: null,
+          deliveryLongitude: null,
         );
       } else {
         await widget.api.updateOrder(
@@ -509,68 +585,202 @@ class _OrderEditDialogState extends State<_OrderEditDialog> {
   @override
   Widget build(BuildContext context) {
     final isNew = widget.existing == null;
-    
+
+    final size = MediaQuery.of(context).size;
     return Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 500, maxHeight: 800),
+        constraints: BoxConstraints(
+          maxWidth: 500,
+          maxHeight: size.height * 0.92,
+        ),
         child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: _loading 
-              ? const SizedBox(height: 200, child: Center(child: CircularProgressIndicator()))
+          padding: const EdgeInsets.all(18),
+          child: _loading
+              ? const SizedBox(
+                  height: 200,
+                  child: Center(child: CircularProgressIndicator()),
+                )
               : Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Text(
-                      isNew ? 'New Order (Cart)' : 'Edit Order #${widget.existing!.orderId}',
-                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                      isNew
+                          ? 'New Order (Cart)'
+                          : 'Edit Order #${widget.existing!.orderId}',
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const SizedBox(height: 24),
-                    
+
                     Expanded(
                       child: SingleChildScrollView(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             DropdownButtonFormField<int>(
-                              value: _users.any((u) => u.id == _selectedUserId) ? _selectedUserId : null,
-                              decoration: const InputDecoration(labelText: 'Customer', prefixIcon: Icon(Icons.person_pin)),
-                              items: _users.map((u) => DropdownMenuItem(value: u.id, child: Text(u.name))).toList(),
-                              onChanged: isNew ? (v) => setState(() => _selectedUserId = v) : null,
+                              value: _users.any((u) => u.id == _selectedUserId)
+                                  ? _selectedUserId
+                                  : null,
+                              decoration: const InputDecoration(
+                                labelText: 'Customer',
+                                prefixIcon: Icon(Icons.person_pin),
+                              ),
+                              items: _users
+                                  .map(
+                                    (u) => DropdownMenuItem(
+                                      value: u.id,
+                                      child: Text(u.name),
+                                    ),
+                                  )
+                                  .toList(),
+                              onChanged: isNew
+                                  ? (v) => setState(() => _selectedUserId = v)
+                                  : null,
                             ),
                             const SizedBox(height: 16),
-                            
+
                             DropdownButtonFormField<int>(
-                              value: _stores.any((s) => s.id == _selectedStoreId) ? _selectedStoreId : null,
-                              decoration: const InputDecoration(labelText: 'Store', prefixIcon: Icon(Icons.storefront)),
-                              items: _stores.map((s) => DropdownMenuItem(value: s.id, child: Text(s.name))).toList(),
-                              onChanged: isNew ? (v) {
-                                setState(() {
-                                  _selectedStoreId = v;
-                                  _cart.clear();
-                                  if (v != null) _loadMenu(v);
-                                });
-                              } : null,
+                              value:
+                                  _stores.any((s) => s.id == _selectedStoreId)
+                                  ? _selectedStoreId
+                                  : null,
+                              decoration: const InputDecoration(
+                                labelText: 'Store',
+                                prefixIcon: Icon(Icons.storefront),
+                              ),
+                              items: _stores
+                                  .map(
+                                    (s) => DropdownMenuItem(
+                                      value: s.id,
+                                      child: Text(s.name),
+                                    ),
+                                  )
+                                  .toList(),
+                              onChanged: isNew
+                                  ? (v) {
+                                      setState(() {
+                                        _selectedStoreId = v;
+                                        _cart.clear();
+                                        if (v != null) _loadMenu(v);
+                                      });
+                                    }
+                                  : null,
                             ),
-                            
+
+                            if (isNew) ...[
+                              const SizedBox(height: 16),
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue[50],
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: Colors.blue[200]!),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Wrap(
+                                      alignment: WrapAlignment.spaceBetween,
+                                      crossAxisAlignment:
+                                          WrapCrossAlignment.center,
+                                      spacing: 8,
+                                      runSpacing: 6,
+                                      children: [
+                                        const Text(
+                                          'Delivery Location',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.blue,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    if (_deliveryLatitude != null &&
+                                        _deliveryLongitude != null)
+                                      Padding(
+                                        padding: const EdgeInsets.only(top: 8),
+                                        child: Text(
+                                          '${_deliveryLatitude!.toStringAsFixed(4)}, ${_deliveryLongitude!.toStringAsFixed(4)}',
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      )
+                                    else
+                                      Padding(
+                                        padding: const EdgeInsets.only(top: 8),
+                                        child: Text(
+                                          'Not selected',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.grey[600],
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ],
+
                             if (!isNew) ...[
                               const SizedBox(height: 16),
                               DropdownButtonFormField<String>(
-                                value: ['PENDING_PAYMENT', 'PAID', 'PREPARING', 'READY', 'COMPLETED', 'CANCELLED', 'FAILED'].contains(_status) ? _status : 'PENDING_PAYMENT',
-                                decoration: const InputDecoration(labelText: 'Status', prefixIcon: Icon(Icons.info_outline)),
-                                items: ['PENDING_PAYMENT', 'PAID', 'PREPARING', 'READY', 'COMPLETED', 'CANCELLED', 'FAILED']
-                                    .map((s) => DropdownMenuItem(value: s, child: Text(s)))
-                                    .toList(),
+                                value:
+                                    [
+                                      'PENDING_PAYMENT',
+                                      'PAID',
+                                      'PREPARING',
+                                      'READY',
+                                      'COMPLETED',
+                                      'CANCELLED',
+                                      'FAILED',
+                                    ].contains(_status)
+                                    ? _status
+                                    : 'PENDING_PAYMENT',
+                                decoration: const InputDecoration(
+                                  labelText: 'Status',
+                                  prefixIcon: Icon(Icons.info_outline),
+                                ),
+                                items:
+                                    [
+                                          'PENDING_PAYMENT',
+                                          'PAID',
+                                          'PREPARING',
+                                          'READY',
+                                          'COMPLETED',
+                                          'CANCELLED',
+                                          'FAILED',
+                                        ]
+                                        .map(
+                                          (s) => DropdownMenuItem(
+                                            value: s,
+                                            child: Text(s),
+                                          ),
+                                        )
+                                        .toList(),
                                 onChanged: (v) => setState(() => _status = v!),
                               ),
                             ],
-                            
+
                             const Padding(
                               padding: EdgeInsets.only(top: 24, bottom: 8),
-                              child: Text('CART ITEMS', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey, fontSize: 12)),
+                              child: Text(
+                                'CART ITEMS',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.grey,
+                                  fontSize: 12,
+                                ),
+                              ),
                             ),
-                            
+
                             if (_cart.isEmpty)
                               Container(
                                 padding: const EdgeInsets.all(16),
@@ -578,14 +788,18 @@ class _OrderEditDialogState extends State<_OrderEditDialog> {
                                   color: Colors.grey[50],
                                   borderRadius: BorderRadius.circular(12),
                                 ),
-                                child: const Text('Cart is empty. Add items below.', style: TextStyle(fontStyle: FontStyle.italic)),
+                                child: const Text(
+                                  'Cart is empty. Add items below.',
+                                  style: TextStyle(fontStyle: FontStyle.italic),
+                                ),
                               )
                             else
                               ListView.separated(
                                 shrinkWrap: true,
                                 physics: const NeverScrollableScrollPhysics(),
                                 itemCount: _cart.length,
-                                separatorBuilder: (_, __) => const SizedBox(height: 8),
+                                separatorBuilder: (_, __) =>
+                                    const SizedBox(height: 8),
                                 itemBuilder: (ctx, idx) {
                                   final it = _cart[idx];
                                   return Container(
@@ -593,30 +807,49 @@ class _OrderEditDialogState extends State<_OrderEditDialog> {
                                     decoration: BoxDecoration(
                                       color: Colors.white,
                                       borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(color: Colors.grey[200]!),
+                                      border: Border.all(
+                                        color: Colors.grey[200]!,
+                                      ),
                                     ),
                                     child: Row(
                                       children: [
                                         Expanded(
-                                          child: Text(it['name'], style: const TextStyle(fontWeight: FontWeight.w600)),
+                                          child: Text(
+                                            it['name'],
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
                                         ),
                                         IconButton(
-                                          icon: const Icon(Icons.remove_circle_outline, size: 20),
-                                          onPressed: () => _updateCartQty(idx, -1),
+                                          icon: const Icon(
+                                            Icons.remove_circle_outline,
+                                            size: 20,
+                                          ),
+                                          onPressed: () =>
+                                              _updateCartQty(idx, -1),
                                         ),
                                         Text('${it['qty']}'),
                                         IconButton(
-                                          icon: const Icon(Icons.add_circle_outline, size: 20),
-                                          onPressed: () => _updateCartQty(idx, 1),
+                                          icon: const Icon(
+                                            Icons.add_circle_outline,
+                                            size: 20,
+                                          ),
+                                          onPressed: () =>
+                                              _updateCartQty(idx, 1),
                                         ),
                                         const SizedBox(width: 8),
-                                        Text('LKR ${(it['qty'] * it['unitPrice']).toStringAsFixed(0)}'),
+                                        Text(
+                                          'LKR ${(it['qty'] * it['unitPrice']).toStringAsFixed(0)}',
+                                        ),
                                       ],
                                     ),
                                   );
                                 },
                               ),
-                              
+
                             const SizedBox(height: 24),
                             Container(
                               padding: const EdgeInsets.all(16),
@@ -626,19 +859,38 @@ class _OrderEditDialogState extends State<_OrderEditDialog> {
                               ),
                               child: Column(
                                 children: [
-                                  _buildTotalRow('Subtotal', 'LKR ${_subtotal.toStringAsFixed(2)}', false),
-                                  _buildTotalRow('Delivery', 'LKR 200.00', false),
+                                  _buildTotalRow(
+                                    'Subtotal',
+                                    'LKR ${_subtotal.toStringAsFixed(2)}',
+                                    false,
+                                  ),
+                                  _buildTotalRow(
+                                    'Delivery',
+                                    'LKR 200.00',
+                                    false,
+                                  ),
                                   const Divider(color: Colors.white24),
-                                  _buildTotalRow('Total', 'LKR ${(_subtotal + 200).toStringAsFixed(2)}', true),
+                                  _buildTotalRow(
+                                    'Total',
+                                    'LKR ${(_subtotal + 200).toStringAsFixed(2)}',
+                                    true,
+                                  ),
                                 ],
                               ),
                             ),
-                            
+
                             const Padding(
                               padding: EdgeInsets.only(top: 24, bottom: 8),
-                              child: Text('ADD FROM MENU', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey, fontSize: 12)),
+                              child: Text(
+                                'ADD FROM MENU',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.grey,
+                                  fontSize: 12,
+                                ),
+                              ),
                             ),
-                            
+
                             if (_selectedStoreId == null)
                               const Text('Select a store first')
                             else if (_menuItems.isEmpty)
@@ -652,10 +904,16 @@ class _OrderEditDialogState extends State<_OrderEditDialog> {
                                   final item = _menuItems[i];
                                   return ListTile(
                                     contentPadding: EdgeInsets.zero,
-                                    title: Text(item.name, style: const TextStyle(fontSize: 14)),
+                                    title: Text(
+                                      item.name,
+                                      style: const TextStyle(fontSize: 14),
+                                    ),
                                     subtitle: Text('LKR ${item.price}'),
                                     trailing: IconButton(
-                                      icon: const Icon(Icons.add_circle, color: Color(0xFFFF6A00)),
+                                      icon: const Icon(
+                                        Icons.add_circle,
+                                        color: Color(0xFFFF6A00),
+                                      ),
                                       onPressed: () => _addMenuItemToCart(item),
                                     ),
                                   );
@@ -665,13 +923,15 @@ class _OrderEditDialogState extends State<_OrderEditDialog> {
                         ),
                       ),
                     ),
-                    
+
                     const SizedBox(height: 24),
                     Row(
                       children: [
                         Expanded(
                           child: TextButton(
-                            onPressed: _submitting ? null : () => Navigator.pop(context),
+                            onPressed: _submitting
+                                ? null
+                                : () => Navigator.pop(context),
                             child: const Text('Cancel'),
                           ),
                         ),
@@ -681,9 +941,20 @@ class _OrderEditDialogState extends State<_OrderEditDialog> {
                             onPressed: _submitting ? null : _save,
                             style: FilledButton.styleFrom(
                               backgroundColor: const Color(0xFFFF6A00),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
                             ),
-                            child: _submitting ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text('Save Order'),
+                            child: _submitting
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : const Text('Save Order'),
                           ),
                         ),
                       ],
@@ -701,8 +972,21 @@ class _OrderEditDialogState extends State<_OrderEditDialog> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: TextStyle(color: Colors.white70, fontWeight: bold ? FontWeight.bold : FontWeight.normal)),
-          Text(value, style: TextStyle(color: bold ? const Color(0xFFFF6A00) : Colors.white, fontWeight: bold ? FontWeight.bold : FontWeight.normal, fontSize: bold ? 18 : 14)),
+          Text(
+            label,
+            style: TextStyle(
+              color: Colors.white70,
+              fontWeight: bold ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              color: bold ? const Color(0xFFFF6A00) : Colors.white,
+              fontWeight: bold ? FontWeight.bold : FontWeight.normal,
+              fontSize: bold ? 18 : 14,
+            ),
+          ),
         ],
       ),
     );

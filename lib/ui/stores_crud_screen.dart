@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:geolocator/geolocator.dart';
 
 import '../models.dart';
 import '../services/api.dart';
+import '../services/validators.dart';
 
 class StoresCrudScreen extends StatefulWidget {
   const StoresCrudScreen({super.key});
@@ -202,13 +202,40 @@ class _StoreEditDialogState extends State<_StoreEditDialog> {
     super.dispose();
   }
 
+  String? _validateForm() {
+    final name = _nameCtrl.text;
+    final address = _addressCtrl.text;
+    final lat = _latCtrl.text;
+    final lng = _lngCtrl.text;
+
+    // Validate name
+    var error = Validators.validateName(name);
+    if (error != null) return error;
+
+    // Validate address if provided
+    error = Validators.validateAddress(address);
+    if (error != null) return error;
+
+    // Validate latitude if provided
+    error = Validators.validateLatitude(lat.isEmpty ? null : lat);
+    if (error != null) return error;
+
+    // Validate longitude if provided
+    error = Validators.validateLongitude(lng.isEmpty ? null : lng);
+    if (error != null) return error;
+
+    return null;
+  }
+
   Future<void> _submit() async {
-    final name = _nameCtrl.text.trim();
-    final address = _addressCtrl.text.trim();
-    if (name.isEmpty) {
-      _showError('Name is required');
+    final validationError = _validateForm();
+    if (validationError != null) {
+      _showError(validationError);
       return;
     }
+
+    final name = _nameCtrl.text.trim();
+    final address = _addressCtrl.text.trim();
 
     final lat = double.tryParse(_latCtrl.text);
     final lng = double.tryParse(_lngCtrl.text);
@@ -254,40 +281,56 @@ class _StoreEditDialogState extends State<_StoreEditDialog> {
         children: [
           TextField(
             controller: _nameCtrl,
-            decoration: const InputDecoration(labelText: 'Name'),
+            decoration: InputDecoration(
+              labelText: 'Name',
+              hintText: 'Store name (min 2 chars)',
+              errorText: _nameCtrl.text.isNotEmpty
+                  ? Validators.validateName(_nameCtrl.text)
+                  : null,
+            ),
+            onChanged: (_) => setState(() {}),
           ),
           TextField(
             controller: _addressCtrl,
-            decoration: const InputDecoration(labelText: 'Address'),
+            decoration: InputDecoration(
+              labelText: 'Address',
+              hintText: 'Full address (optional)',
+              errorText: _addressCtrl.text.isNotEmpty
+                  ? Validators.validateAddress(_addressCtrl.text)
+                  : null,
+            ),
+            onChanged: (_) => setState(() {}),
           ),
           Row(
             children: [
               Expanded(
                 child: TextField(
                   controller: _latCtrl,
-                  decoration: const InputDecoration(labelText: 'Latitude'),
+                  decoration: InputDecoration(
+                    labelText: 'Latitude',
+                    hintText: '-90 to 90',
+                    errorText: _latCtrl.text.isNotEmpty
+                        ? Validators.validateLatitude(_latCtrl.text)
+                        : null,
+                  ),
                   keyboardType: TextInputType.number,
+                  onChanged: (_) => setState(() {}),
                 ),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: TextField(
                   controller: _lngCtrl,
-                  decoration: const InputDecoration(labelText: 'Longitude'),
+                  decoration: InputDecoration(
+                    labelText: 'Longitude',
+                    hintText: '-180 to 180',
+                    errorText: _lngCtrl.text.isNotEmpty
+                        ? Validators.validateLongitude(_lngCtrl.text)
+                        : null,
+                  ),
                   keyboardType: TextInputType.number,
+                  onChanged: (_) => setState(() {}),
                 ),
-              ),
-              IconButton(
-                icon: const Icon(Icons.my_location),
-                onPressed: () async {
-                   try {
-                     Position pos = await Geolocator.getCurrentPosition();
-                     _latCtrl.text = pos.latitude.toString();
-                     _lngCtrl.text = pos.longitude.toString();
-                   } catch (e) {
-                     _showError('Location error: $e');
-                   }
-                },
               ),
             ],
           ),

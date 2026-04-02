@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../services/api.dart';
+import '../services/validators.dart';
 import 'paypal_webview_screen.dart';
 import 'receipt_screen.dart';
 import '../models.dart';
@@ -43,9 +44,12 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
         ),
       );
       if (didApprove == true && mounted) {
-        await Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => ReceiptScreen(orderId: widget.order.orderId)),
-        );
+        final receipt = await _api.getReceipt(orderId: widget.order.orderId);
+        if (mounted) {
+          await Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => ReceiptScreen(receipt: receipt)),
+          );
+        }
       }
     } catch (e) {
       if (!mounted) return;
@@ -60,9 +64,12 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
     try {
       await _api.confirmCod(orderId: widget.order.orderId);
       if (!mounted) return;
-      await Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => ReceiptScreen(orderId: widget.order.orderId)),
-      );
+      final receipt = await _api.getReceipt(orderId: widget.order.orderId);
+      if (mounted) {
+        await Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => ReceiptScreen(receipt: receipt)),
+        );
+      }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
@@ -76,9 +83,12 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
     try {
       await _api.confirmOnlineBanking(orderId: widget.order.orderId, reference: reference);
       if (!mounted) return;
-      await Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => ReceiptScreen(orderId: widget.order.orderId)),
-      );
+      final receipt = await _api.getReceipt(orderId: widget.order.orderId);
+      if (mounted) {
+        await Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => ReceiptScreen(receipt: receipt)),
+        );
+      }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
@@ -96,17 +106,34 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
         // Card checkout is routed through PayPal (supports card in checkout UI).
         return _payWithPayPal();
       case PaymentOption.digitalWallet:
+        final providerLower = _walletProvider.toLowerCase();
+        if (providerLower == 'paypal') {
+          return _payWithPayPal();
+        }
+
         final walletId = _walletIdController.text.trim();
-        if (walletId.isEmpty) {
+        final requiredErr = Validators.requireString(
+          walletId.isEmpty ? null : walletId,
+          'Wallet ID / phone number',
+        );
+        if (requiredErr != null) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Enter wallet ID / phone number')),
+            SnackBar(content: Text(requiredErr)),
           );
           return;
         }
-        if (_walletProvider.toLowerCase() == 'paypal') {
-          return _payWithPayPal();
+
+        final walletIdError = Validators.validateMobileNumber(walletId);
+        if (walletIdError != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(walletIdError)),
+          );
+          return;
         }
-        return _payWithOnlineBanking(reference: '$_walletProvider:$walletId');
+
+        return _payWithOnlineBanking(
+          reference: '$_walletProvider:$walletId',
+        );
     }
   }
 

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../models.dart';
 import '../services/api.dart';
+import '../services/validators.dart';
+import 'receipt_screen.dart';
 
 class PaymentManagementDashboard extends StatefulWidget {
   const PaymentManagementDashboard({super.key});
@@ -14,7 +16,6 @@ class _PaymentManagementDashboardState
     extends State<PaymentManagementDashboard> {
   final _api = ApiClient();
   bool _loading = false;
-  String? _error;
   List<Payment> _items = const [];
   String _filterStatus = 'All';
 
@@ -27,13 +28,15 @@ class _PaymentManagementDashboardState
   Future<void> _reload() async {
     setState(() {
       _loading = true;
-      _error = null;
     });
     try {
       final items = await _api.listPayments(limit: 100);
       if (mounted) setState(() => _items = items);
     } catch (e) {
-      if (mounted) setState(() => _error = e.toString());
+      if (mounted)
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.toString())));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -51,6 +54,23 @@ class _PaymentManagementDashboardState
     await _reload();
   }
 
+  // Show receipt dialog for captured payments
+  Future<void> _showReceipt(Payment p) async {
+    try {
+      final receipt = await _api.getReceipt(orderId: p.orderId);
+      if (!mounted) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => ReceiptScreen(receipt: receipt)),
+      );
+    } catch (e) {
+      if (mounted)
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.toString())));
+    }
+  }
+
   Future<void> _delete(Payment p) async {
     final yes = await showDialog<bool>(
       context: context,
@@ -59,8 +79,14 @@ class _PaymentManagementDashboardState
         content: Text('Payment record #${p.id}'),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete'),
+          ),
         ],
       ),
     );
@@ -69,7 +95,10 @@ class _PaymentManagementDashboardState
       await _api.deletePayment(id: p.id);
       _reload();
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      if (mounted)
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.toString())));
     }
   }
 
@@ -87,7 +116,9 @@ class _PaymentManagementDashboardState
   }
 
   double _getTotalAmount() => _items.fold(0, (sum, p) => sum + p.amount);
-  double _getCapturedAmount() => _items.where((p) => p.status == 'CAPTURED').fold(0, (sum, p) => sum + p.amount);
+  double _getCapturedAmount() => _items
+      .where((p) => p.status == 'CAPTURED')
+      .fold(0, (sum, p) => sum + p.amount);
 
   @override
   Widget build(BuildContext context) {
@@ -96,7 +127,9 @@ class _PaymentManagementDashboardState
     return Scaffold(
       appBar: AppBar(
         title: const Text('Finance & Payments'),
-        actions: [IconButton(onPressed: _reload, icon: const Icon(Icons.refresh))],
+        actions: [
+          IconButton(onPressed: _reload, icon: const Icon(Icons.refresh)),
+        ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _create,
@@ -115,9 +148,23 @@ class _PaymentManagementDashboardState
                     padding: const EdgeInsets.all(16),
                     child: Row(
                       children: [
-                        Expanded(child: _buildStatCard('Gross Vol', 'LKR ${_getTotalAmount().toStringAsFixed(0)}', Icons.payments, const Color(0xFFFF6A00))),
+                        Expanded(
+                          child: _buildStatCard(
+                            'Gross Vol',
+                            'LKR ${_getTotalAmount().toStringAsFixed(0)}',
+                            Icons.payments,
+                            const Color(0xFFFF6A00),
+                          ),
+                        ),
                         const SizedBox(width: 12),
-                        Expanded(child: _buildStatCard('Net Revenue', 'LKR ${_getCapturedAmount().toStringAsFixed(0)}', Icons.account_balance_wallet, const Color(0xFF11A36A))),
+                        Expanded(
+                          child: _buildStatCard(
+                            'Net Revenue',
+                            'LKR ${_getCapturedAmount().toStringAsFixed(0)}',
+                            Icons.account_balance_wallet,
+                            const Color(0xFF11A36A),
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -129,17 +176,36 @@ class _PaymentManagementDashboardState
                     scrollDirection: Axis.horizontal,
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Row(
-                      children: ['All', 'CAPTURED', 'CREATED', 'AUTHORIZED', 'FAILED', 'CANCELLED']
-                          .map((s) => Padding(
-                                padding: const EdgeInsets.only(right: 8),
-                                child: FilterChip(
-                                  label: Text(s, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                                  selected: _filterStatus == s,
-                                  onSelected: (_) => setState(() => _filterStatus = s),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      children:
+                          [
+                                'All',
+                                'CAPTURED',
+                                'CREATED',
+                                'AUTHORIZED',
+                                'FAILED',
+                                'CANCELLED',
+                              ]
+                              .map(
+                                (s) => Padding(
+                                  padding: const EdgeInsets.only(right: 8),
+                                  child: FilterChip(
+                                    label: Text(
+                                      s,
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    selected: _filterStatus == s,
+                                    onSelected: (_) =>
+                                        setState(() => _filterStatus = s),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                  ),
                                 ),
-                              ))
-                          .toList(),
+                              )
+                              .toList(),
                     ),
                   ),
                 ),
@@ -150,14 +216,26 @@ class _PaymentManagementDashboardState
                 const SliverPadding(
                   padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   sliver: SliverToBoxAdapter(
-                    child: Text('TRANSACTION LEDGER', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Colors.grey, letterSpacing: 1.1)),
+                    child: Text(
+                      'TRANSACTION LEDGER',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.grey,
+                        letterSpacing: 1.1,
+                      ),
+                    ),
                   ),
                 ),
 
                 SliverPadding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   sliver: filteredPayments.isEmpty
-                      ? const SliverFillRemaining(child: Center(child: Text('No transactions recorded')))
+                      ? const SliverFillRemaining(
+                          child: Center(
+                            child: Text('No transactions recorded'),
+                          ),
+                        )
                       : SliverList(
                           delegate: SliverChildBuilderDelegate(
                             (ctx, i) => _buildPaymentCard(filteredPayments[i]),
@@ -171,16 +249,34 @@ class _PaymentManagementDashboardState
     );
   }
 
-  Widget _buildStatCard(String label, String value, IconData icon, Color color) {
+  Widget _buildStatCard(
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10)]),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(icon, color: color, size: 20),
           const SizedBox(height: 12),
-          Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, overflow: TextOverflow.ellipsis)),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w900,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
           Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
         ],
       ),
@@ -189,39 +285,84 @@ class _PaymentManagementDashboardState
 
   Widget _buildPaymentCard(Payment payment) {
     final isPaid = payment.status == 'CAPTURED';
-    final statusColor = isPaid ? const Color(0xFF11A36A) : const Color(0xFFFF6A00);
+    final statusColor = isPaid
+        ? const Color(0xFF11A36A)
+        : const Color(0xFFFF6A00);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4))],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         leading: Container(
           width: 52,
           height: 52,
-          decoration: BoxDecoration(color: statusColor.withOpacity(0.1), borderRadius: BorderRadius.circular(15)),
-          child: Icon(payment.method == 'CASH_ON_DELIVERY' ? Icons.handshake_outlined : Icons.account_balance, color: statusColor, size: 24),
+          decoration: BoxDecoration(
+            color: statusColor.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(15),
+          ),
+          child: Icon(
+            payment.method == 'CASH_ON_DELIVERY'
+                ? Icons.handshake_outlined
+                : Icons.account_balance,
+            color: statusColor,
+            size: 24,
+          ),
         ),
         title: Row(
           children: [
-            Expanded(child: Text('Payment #${payment.id}', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14))),
-            Text('LKR ${payment.amount.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: Color(0xFFFF6A00))),
+            Expanded(
+              child: Text(
+                'Payment #${payment.id}',
+                style: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+            Text(
+              'LKR ${payment.amount.toStringAsFixed(2)}',
+              style: const TextStyle(
+                fontWeight: FontWeight.w900,
+                fontSize: 14,
+                color: Color(0xFFFF6A00),
+              ),
+            ),
           ],
         ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 4),
-            Text('Order #${payment.orderId} • ${payment.method}', style: TextStyle(color: Colors.grey[500], fontSize: 12)),
+            Text(
+              'Order #${payment.orderId} • ${payment.method}',
+              style: TextStyle(color: Colors.grey[500], fontSize: 12),
+            ),
             const SizedBox(height: 4),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(color: statusColor.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
-              child: Text(payment.status, style: TextStyle(color: statusColor, fontSize: 9, fontWeight: FontWeight.w900)),
+              decoration: BoxDecoration(
+                color: statusColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                payment.status,
+                style: TextStyle(
+                  color: statusColor,
+                  fontSize: 9,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
             ),
           ],
         ),
@@ -233,10 +374,15 @@ class _PaymentManagementDashboardState
           },
           itemBuilder: (_) => const [
             PopupMenuItem(value: 'edit', child: Text('Edit Status')),
-            PopupMenuItem(value: 'delete', child: Text('Delete Record', style: TextStyle(color: Colors.red))),
+            PopupMenuItem(
+              value: 'delete',
+              child: Text('Delete Record', style: TextStyle(color: Colors.red)),
+            ),
           ],
         ),
-        onTap: () => _edit(payment),
+        onTap: () => payment.status == 'CAPTURED'
+            ? _showReceipt(payment)
+            : _edit(payment),
       ),
     );
   }
@@ -260,27 +406,69 @@ class _PaymentEditDialogState extends State<_PaymentEditDialog> {
   @override
   void initState() {
     super.initState();
-    _orderIdCtrl = TextEditingController(text: widget.existing?.orderId.toString() ?? '');
-    _amountCtrl = TextEditingController(text: widget.existing?.amount.toString() ?? '');
+    _orderIdCtrl = TextEditingController(
+      text: widget.existing?.orderId.toString() ?? '',
+    );
+    _amountCtrl = TextEditingController(
+      text: widget.existing?.amount.toString() ?? '',
+    );
     _method = widget.existing?.method ?? 'ONLINE_BANKING';
     _status = widget.existing?.status ?? 'CREATED';
   }
 
   Future<void> _save() async {
-    final orderId = int.tryParse(_orderIdCtrl.text) ?? 0;
-    final amount = double.tryParse(_amountCtrl.text) ?? 0.0;
-    if (orderId <= 0 || amount <= 0) return;
+    final orderIdText = _orderIdCtrl.text.trim();
+    final amountText = _amountCtrl.text.trim();
+
+    // Only validate these fields when creating a new record.
+    if (widget.existing == null) {
+      final orderIdError =
+          Validators.validatePositiveInt(orderIdText, 'Order ID');
+      if (orderIdError != null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(orderIdError)),
+          );
+        }
+        return;
+      }
+
+      final amountError = Validators.validatePrice(amountText);
+      if (amountError != null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(amountError)),
+          );
+        }
+        return;
+      }
+    }
+
+    final orderId = int.tryParse(orderIdText) ?? 0;
+    final amount = double.tryParse(amountText) ?? 0.0;
 
     setState(() => _submitting = true);
     try {
       if (widget.existing == null) {
-        await widget.api.createPayment(orderId: orderId, amount: amount, method: _method, status: _status, currency: 'LKR');
+        await widget.api.createPayment(
+          orderId: orderId,
+          amount: amount,
+          method: _method,
+          status: _status,
+          currency: 'LKR',
+        );
       } else {
-        await widget.api.updatePayment(id: widget.existing!.id, status: _status);
+        await widget.api.updatePayment(
+          id: widget.existing!.id,
+          status: _status,
+        );
       }
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      if (mounted)
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.toString())));
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
@@ -296,35 +484,85 @@ class _PaymentEditDialogState extends State<_PaymentEditDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(widget.existing == null ? 'Record Transaction' : 'Update Transaction', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20)),
+            Text(
+              widget.existing == null
+                  ? 'Record Transaction'
+                  : 'Update Transaction',
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+            ),
             const SizedBox(height: 24),
-            TextField(controller: _orderIdCtrl, decoration: const InputDecoration(labelText: 'Order ID', prefixIcon: Icon(Icons.receipt_long))),
+            TextField(
+              controller: _orderIdCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Order ID',
+                prefixIcon: Icon(Icons.receipt_long),
+              ),
+            ),
             const SizedBox(height: 16),
-            TextField(controller: _amountCtrl, decoration: const InputDecoration(labelText: 'Amount (LKR)', prefixIcon: Icon(Icons.payments))),
+            TextField(
+              controller: _amountCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Amount (LKR)',
+                prefixIcon: Icon(Icons.payments),
+              ),
+            ),
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
               value: _method,
-              decoration: const InputDecoration(labelText: 'Method', prefixIcon: Icon(Icons.credit_card)),
-              items: ['CASH_ON_DELIVERY', 'ONLINE_BANKING', 'PAYPAL'].map((s) => DropdownMenuItem(value: s, child: Text(s, style: const TextStyle(fontSize: 13)))).toList(),
+              decoration: const InputDecoration(
+                labelText: 'Method',
+                prefixIcon: Icon(Icons.credit_card),
+              ),
+              items: ['CASH_ON_DELIVERY', 'ONLINE_BANKING', 'PAYPAL']
+                  .map(
+                    (s) => DropdownMenuItem(
+                      value: s,
+                      child: Text(s, style: const TextStyle(fontSize: 13)),
+                    ),
+                  )
+                  .toList(),
               onChanged: (v) => setState(() => _method = v!),
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
               value: _status,
-              decoration: const InputDecoration(labelText: 'Status', prefixIcon: Icon(Icons.info_outline)),
-              items: ['CREATED', 'AUTHORIZED', 'CAPTURED', 'FAILED', 'CANCELLED'].map((s) => DropdownMenuItem(value: s, child: Text(s, style: const TextStyle(fontSize: 13)))).toList(),
+              decoration: const InputDecoration(
+                labelText: 'Status',
+                prefixIcon: Icon(Icons.info_outline),
+              ),
+              items:
+                  ['CREATED', 'AUTHORIZED', 'CAPTURED', 'FAILED', 'CANCELLED']
+                      .map(
+                        (s) => DropdownMenuItem(
+                          value: s,
+                          child: Text(s, style: const TextStyle(fontSize: 13)),
+                        ),
+                      )
+                      .toList(),
               onChanged: (v) => setState(() => _status = v!),
             ),
             const SizedBox(height: 32),
             Row(
               children: [
-                Expanded(child: TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel'))),
+                Expanded(
+                  child: TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Cancel'),
+                  ),
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: FilledButton(
                     onPressed: _submitting ? null : _save,
-                    style: FilledButton.styleFrom(backgroundColor: const Color(0xFFFF6A00), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                    child: _submitting ? const CircularProgressIndicator(color: Colors.white) : const Text('Confirm'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFFFF6A00),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: _submitting
+                        ? const CircularProgressIndicator(color: Colors.white)
+                        : const Text('Confirm'),
                   ),
                 ),
               ],

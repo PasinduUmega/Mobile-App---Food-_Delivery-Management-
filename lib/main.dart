@@ -82,6 +82,11 @@ class _MyAppState extends State<MyApp> {
           textStyle: const TextStyle(fontWeight: FontWeight.w600),
         ),
       ),
+      snackBarTheme: SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        contentTextStyle: const TextStyle(fontWeight: FontWeight.w500),
+      ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: Colors.white,
@@ -141,6 +146,11 @@ class _MyAppState extends State<MyApp> {
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
           textStyle: const TextStyle(fontWeight: FontWeight.w600),
         ),
+      ),
+      snackBarTheme: SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        contentTextStyle: const TextStyle(fontWeight: FontWeight.w500),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,

@@ -93,7 +93,8 @@ class MenuItem {
   });
 
   static MenuItem fromJson(Map<String, dynamic> json) {
-    DateTime? parseDt(dynamic v) => v != null ? DateTime.tryParse(v.toString()) : null;
+    DateTime? parseDt(dynamic v) =>
+        v != null ? DateTime.tryParse(v.toString()) : null;
     return MenuItem(
       id: int.tryParse('${json['id']}') ?? 0,
       storeId: int.tryParse('${json['store_id']}') ?? 0,
@@ -131,10 +132,14 @@ class InventoryItem {
       id: int.tryParse('${json['id']}') ?? 0,
       menuItemId: int.tryParse('${json['menu_item_id']}') ?? 0,
       menuItemName: json['menu_item_name']?.toString(),
-      storeId: json['store_id'] != null ? int.tryParse('${json['store_id']}') : null,
+      storeId: json['store_id'] != null
+          ? int.tryParse('${json['store_id']}')
+          : null,
       storeName: json['store_name']?.toString(),
       quantity: int.tryParse('${json['quantity']}') ?? 0,
-      updatedAt: json['updated_at'] != null ? DateTime.tryParse(json['updated_at'].toString()) : null,
+      updatedAt: json['updated_at'] != null
+          ? DateTime.tryParse(json['updated_at'].toString())
+          : null,
     );
   }
 }
@@ -165,7 +170,8 @@ class DeliveryInfo {
   });
 
   static DeliveryInfo fromJson(Map<String, dynamic> json) {
-    DateTime? parseDt(dynamic v) => v != null ? DateTime.tryParse(v.toString()) : null;
+    DateTime? parseDt(dynamic v) =>
+        v != null ? DateTime.tryParse(v.toString()) : null;
     return DeliveryInfo(
       id: int.tryParse('${json['id']}') ?? 0,
       orderId: int.tryParse('${json['order_id']}') ?? 0,
@@ -272,8 +278,12 @@ class OrderSummary {
     }
     return OrderSummary(
       orderId: int.tryParse('${json['id']}') ?? 0,
-      userId: json['user_id'] != null ? int.tryParse('${json['user_id']}') : null,
-      storeId: json['store_id'] != null ? int.tryParse('${json['store_id']}') : null,
+      userId: json['user_id'] != null
+          ? int.tryParse('${json['user_id']}')
+          : null,
+      storeId: json['store_id'] != null
+          ? int.tryParse('${json['store_id']}')
+          : null,
       currency: json['currency']?.toString() ?? '',
       subtotal: double.tryParse('${json['subtotal']}') ?? 0.0,
       deliveryFee: double.tryParse('${json['delivery_fee']}') ?? 0.0,
@@ -287,8 +297,6 @@ class OrderSummary {
     );
   }
 }
-
-
 
 class User {
   final int id;
@@ -405,4 +413,103 @@ class Receipt {
     required this.paymentMethod,
     required this.paymentStatus,
   });
+}
+
+/// Persistent cart item model (from database)
+class DatabaseCartItem {
+  final int id;
+  final int cartId;
+  final int productId;
+  final String name;
+  final int qty;
+  final double unitPrice;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  const DatabaseCartItem({
+    required this.id,
+    required this.cartId,
+    required this.productId,
+    required this.name,
+    required this.qty,
+    required this.unitPrice,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+
+  static DatabaseCartItem fromJson(Map<String, dynamic> json) {
+    DateTime? parseDt(dynamic v) =>
+        DateTime.tryParse(v?.toString() ?? '');
+    return DatabaseCartItem(
+      id: int.tryParse('${json['id']}') ?? 0,
+      cartId: int.tryParse('${json['cart_id']}') ?? 0,
+      productId: int.tryParse('${json['product_id']}') ?? 0,
+      name: json['name']?.toString() ?? '',
+      qty: int.tryParse('${json['qty']}') ?? 0,
+      unitPrice: double.tryParse('${json['unit_price']}') ?? 0.0,
+      createdAt: parseDt(json['created_at']) ?? DateTime.now(),
+      updatedAt: parseDt(json['updated_at']) ?? DateTime.now(),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'product_id': productId,
+    'name': name,
+    'qty': qty,
+    'unit_price': unitPrice,
+  };
+}
+
+/// Persistent shopping cart model (from database)
+class ShoppingCart {
+  final int id;
+  final int userId;
+  final int? storeId;
+  final String status;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final DateTime? checkedOutAt;
+  final List<DatabaseCartItem> items;
+
+  const ShoppingCart({
+    required this.id,
+    required this.userId,
+    this.storeId,
+    required this.status,
+    required this.createdAt,
+    required this.updatedAt,
+    this.checkedOutAt,
+    this.items = const [],
+  });
+
+  static ShoppingCart fromJson(Map<String, dynamic> json) {
+    DateTime? parseDt(dynamic v) =>
+        DateTime.tryParse(v?.toString() ?? '');
+    final itemsList = json['items'] as List? ?? [];
+    final items = itemsList
+        .whereType<Map>()
+        .map((e) => DatabaseCartItem.fromJson(e.cast<String, dynamic>()))
+        .toList();
+
+    return ShoppingCart(
+      id: int.tryParse('${json['id']}') ?? 0,
+      userId: int.tryParse('${json['user_id']}') ?? 0,
+      storeId: int.tryParse('${json['store_id']}'),
+      status: json['status']?.toString() ?? 'ACTIVE',
+      createdAt: parseDt(json['created_at']) ?? DateTime.now(),
+      updatedAt: parseDt(json['updated_at']) ?? DateTime.now(),
+      checkedOutAt: parseDt(json['checked_out_at']),
+      items: items,
+    );
+  }
+
+  /// Calculate cart subtotal
+  double getSubtotal() {
+    return items.fold(0.0, (sum, item) => sum + (item.qty * item.unitPrice));
+  }
+
+  /// Get number of items in cart
+  int getItemCount() {
+    return items.fold(0, (sum, item) => sum + item.qty);
+  }
 }
