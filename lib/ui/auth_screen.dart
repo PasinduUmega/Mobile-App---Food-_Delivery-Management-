@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models.dart';
 import '../services/api.dart';
+import '../services/validators.dart';
 
 class AuthScreen extends StatefulWidget {
   final Function(User) onUserAuthenticated;
@@ -55,22 +56,41 @@ class _AuthScreenState extends State<AuthScreen>
     final mobile = _mobileController.text.trim();
     final address = _addressController.text.trim();
 
-    if (!_isSignIn && name.isEmpty) {
-      _setError('Please enter your name');
-      return;
+    if (!_isSignIn) {
+      final nameError = Validators.validateName(name);
+      if (nameError != null) {
+        _setError(nameError);
+        return;
+      }
     }
-    if (email.isEmpty) {
-      _setError('Please enter your email');
-      return;
-    }
-    if (!_isValidEmail(email)) {
-      _setError('Please enter a valid email');
+
+    final emailError = Validators.validateEmail(email);
+    if (emailError != null) {
+      _setError(emailError);
       return;
     }
 
     if (password.isEmpty) {
       _setError('Please enter your password');
       return;
+    }
+
+    if (!_isSignIn) {
+      final mobileError = Validators.validateMobileNumber(
+        mobile.isEmpty ? null : mobile,
+      );
+      if (mobileError != null) {
+        _setError(mobileError);
+        return;
+      }
+
+      final addressError = Validators.validateAddress(
+        address.isEmpty ? null : address,
+      );
+      if (addressError != null) {
+        _setError(addressError);
+        return;
+      }
     }
 
     setState(() => _loading = true);
@@ -107,10 +127,6 @@ class _AuthScreenState extends State<AuthScreen>
         });
       });
     }
-  }
-
-  bool _isValidEmail(String email) {
-    return RegExp(r'^[^@]+@[^@]+\.[^@]+$').hasMatch(email);
   }
 
   void _toggleMode() {
