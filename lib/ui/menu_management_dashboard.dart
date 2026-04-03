@@ -134,10 +134,12 @@ class _MenuManagementDashboardState extends State<MenuManagementDashboard> {
           IconButton(onPressed: _loadMenu, icon: const Icon(Icons.refresh)),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: FloatingActionButton.small(
         onPressed: _selectedStore == null ? null : _create,
+        tooltip: 'Add menu item',
         backgroundColor: const Color(0xFFFF6A00),
-        child: const Icon(Icons.add),
+        foregroundColor: Colors.white,
+        child: const Icon(Icons.add, size: 20),
       ),
       body: Column(
         children: [

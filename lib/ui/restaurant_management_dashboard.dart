@@ -103,12 +103,12 @@ class _RestaurantManagementDashboardState
           IconButton(onPressed: _reload, icon: const Icon(Icons.refresh)),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: FloatingActionButton.small(
         onPressed: _create,
+        tooltip: 'Add restaurant',
         backgroundColor: const Color(0xFFFF6A00),
         foregroundColor: Colors.white,
-        icon: const Icon(Icons.add),
-        label: const Text('Add Restaurant'),
+        child: const Icon(Icons.add, size: 20),
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
@@ -198,7 +198,7 @@ class _RestaurantManagementDashboardState
                           ),
                         ),
                       ),
-                const SliverPadding(padding: EdgeInsets.only(bottom: 100)),
+                const SliverPadding(padding: EdgeInsets.only(bottom: 88)),
               ],
             ),
     );
@@ -420,22 +420,38 @@ class _RestaurantManagementDashboardState
 
                 const Divider(height: 32),
 
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton.icon(
-                    onPressed: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const MenuManagementDashboard(),
+                Tooltip(
+                  message: 'Open menu editor for this store',
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const MenuManagementDashboard(),
+                        ),
                       ),
-                    ),
-                    icon: const Icon(Icons.restaurant_menu, size: 18),
-                    label: const Text('MANAGE STORE MENU'),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFF1A1A2E),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
+                      icon: const Icon(Icons.restaurant_menu, size: 16),
+                      label: const Text(
+                        'Menu',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFF1A1A2E),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        minimumSize: const Size(0, 36),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                     ),
                   ),
