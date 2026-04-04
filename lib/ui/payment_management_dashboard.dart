@@ -5,7 +5,17 @@ import '../services/validators.dart';
 import 'receipt_screen.dart';
 
 class PaymentManagementDashboard extends StatefulWidget {
-  const PaymentManagementDashboard({super.key});
+  /// When set, only payments for orders at this owner’s stores are listed.
+  final int? ownerUserId;
+
+  /// Store owners: watch-only. Full create/edit/delete is for **admins** only.
+  final bool readOnly;
+
+  const PaymentManagementDashboard({
+    super.key,
+    this.ownerUserId,
+    this.readOnly = false,
+  });
 
   @override
   State<PaymentManagementDashboard> createState() =>
@@ -30,8 +40,23 @@ class _PaymentManagementDashboardState
       _loading = true;
     });
     try {
-      final items = await _api.listPayments(limit: 100);
-      if (mounted) setState(() => _items = items);
+      final items = await _api.listPayments(limit: 200);
+      var list = items;
+      if (widget.ownerUserId != null) {
+        final stores =
+            await _api.listStores(ownerUserId: widget.ownerUserId);
+        final storeIds = stores.map((s) => s.id).toSet();
+        final orders = await _api.listOrders(limit: 500);
+        final allowedOrderIds = orders
+            .where(
+              (o) => o.storeId != null && storeIds.contains(o.storeId),
+            )
+            .map((o) => o.orderId)
+            .toSet();
+        list =
+            items.where((p) => allowedOrderIds.contains(p.orderId)).toList();
+      }
+      if (mounted) setState(() => _items = list);
     } catch (e) {
       if (mounted)
         ScaffoldMessenger.of(
@@ -126,22 +151,62 @@ class _PaymentManagementDashboardState
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Finance & Payments'),
+        title: Text(
+          widget.readOnly
+              ? 'Payments (view only)'
+              : widget.ownerUserId != null
+                  ? 'Payments & receipts (my stores)'
+                  : 'Finance & Payments (CRUD)',
+        ),
         actions: [
           IconButton(onPressed: _reload, icon: const Icon(Icons.refresh)),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _create,
-        backgroundColor: const Color(0xFFFF6A00),
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.add),
-        label: const Text('Record Payment'),
-      ),
+      floatingActionButton: widget.readOnly
+          ? null
+          : FloatingActionButton.extended(
+              onPressed: _create,
+              backgroundColor: const Color(0xFFFF6A00),
+              foregroundColor: Colors.white,
+              icon: const Icon(Icons.add),
+              label: const Text('Record Payment'),
+            ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : CustomScrollView(
               slivers: [
+                if (widget.readOnly)
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                      child: Material(
+                        color: Colors.amber.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Row(
+                            children: [
+                              Icon(Icons.visibility_outlined,
+                                  color: Colors.amber.shade900, size: 22),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  'View only. Recording, editing, or deleting '
+                                  'payments is for admin only (CRUD suite).',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    height: 1.35,
+                                    color: Colors.grey[900],
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
                 // Financial Stats
                 SliverToBoxAdapter(
                   child: Padding(
@@ -238,7 +303,10 @@ class _PaymentManagementDashboardState
                         )
                       : SliverList(
                           delegate: SliverChildBuilderDelegate(
-                            (ctx, i) => _buildPaymentCard(filteredPayments[i]),
+                            (ctx, i) => _buildPaymentCard(
+                                  filteredPayments[i],
+                                  readOnly: widget.readOnly,
+                                ),
                             childCount: filteredPayments.length,
                           ),
                         ),
@@ -283,7 +351,7 @@ class _PaymentManagementDashboardState
     );
   }
 
-  Widget _buildPaymentCard(Payment payment) {
+  Widget _buildPaymentCard(Payment payment, {required bool readOnly}) {
     final isPaid = payment.status == 'CAPTURED';
     final statusColor = isPaid
         ? const Color(0xFF11A36A)
@@ -366,23 +434,35 @@ class _PaymentManagementDashboardState
             ),
           ],
         ),
-        trailing: PopupMenuButton<String>(
-          icon: const Icon(Icons.more_vert, color: Colors.grey, size: 20),
-          onSelected: (v) {
-            if (v == 'edit') _edit(payment);
-            if (v == 'delete') _delete(payment);
-          },
-          itemBuilder: (_) => const [
-            PopupMenuItem(value: 'edit', child: Text('Edit Status')),
-            PopupMenuItem(
-              value: 'delete',
-              child: Text('Delete Record', style: TextStyle(color: Colors.red)),
-            ),
-          ],
-        ),
-        onTap: () => payment.status == 'CAPTURED'
-            ? _showReceipt(payment)
-            : _edit(payment),
+        trailing: readOnly
+            ? (isPaid
+                ? IconButton(
+                    tooltip: 'Receipt',
+                    icon: Icon(Icons.receipt_long_outlined,
+                        color: Colors.grey[700]),
+                    onPressed: () => _showReceipt(payment),
+                  )
+                : null)
+            : PopupMenuButton<String>(
+                icon: const Icon(Icons.more_vert, color: Colors.grey, size: 20),
+                onSelected: (v) {
+                  if (v == 'edit') _edit(payment);
+                  if (v == 'delete') _delete(payment);
+                },
+                itemBuilder: (_) => const [
+                  PopupMenuItem(value: 'edit', child: Text('Edit Status')),
+                  PopupMenuItem(
+                    value: 'delete',
+                    child:
+                        Text('Delete Record', style: TextStyle(color: Colors.red)),
+                  ),
+                ],
+              ),
+        onTap: readOnly
+            ? (isPaid ? () => _showReceipt(payment) : null)
+            : () => payment.status == 'CAPTURED'
+                ? _showReceipt(payment)
+                : _edit(payment),
       ),
     );
   }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models.dart';
 import 'admin_dashboard.dart';
+import 'crud_suite_screen.dart';
 import 'delivery_management_dashboard.dart';
 import 'inventory_management_dashboard.dart';
 import 'menu_management_dashboard.dart';
@@ -16,7 +17,8 @@ import 'user_management_dashboard.dart';
 import 'user_profile_screen.dart';
 import 'users_crud_screen.dart';
 
-/// Unified operations hub: customer flows + every management / CRUD module.
+/// **Administrator** hub: Uber-style shortcuts to test ordering + full CRUD tools.
+/// Customers use the separate 3-tab app (`CustomerDashboard`).
 class UserDashboardScreen extends StatelessWidget {
   final User user;
   final Function()? onSignOut;
@@ -41,10 +43,10 @@ class UserDashboardScreen extends StatelessWidget {
             pinned: true,
             flexibleSpace: FlexibleSpaceBar(
               title: Text(
-                'Operations',
+                'Admin · CRUD hub',
                 style: TextStyle(
                   fontWeight: FontWeight.w900,
-                  letterSpacing: 0.5,
+                  letterSpacing: -0.3,
                   color: cs.onPrimary,
                 ),
               ),
@@ -52,8 +54,8 @@ class UserDashboardScreen extends StatelessWidget {
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
-                      cs.primary,
-                      cs.primary.withOpacity(0.75),
+                      const Color(0xFF1F1F1F),
+                      const Color(0xFF1F1F1F).withOpacity(0.88),
                     ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
@@ -66,7 +68,7 @@ class UserDashboardScreen extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
             sliver: SliverToBoxAdapter(
               child: Text(
-                '${user.name} · Signed in',
+                '${user.name} · Administrator',
                 style: Theme.of(context).textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.w700,
                     ),
@@ -77,7 +79,7 @@ class UserDashboardScreen extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
             sliver: SliverToBoxAdapter(
               child: Text(
-                'QUICK ACCESS',
+                'QUICK ACCESS (like Uber Eats)',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w800,
@@ -106,8 +108,8 @@ class UserDashboardScreen extends StatelessWidget {
                   screen: MyOrdersScreen(user: user),
                 ),
                 _ModuleTile(
-                  title: 'Account & profile',
-                  subtitle: 'Theme, notifications & sign out',
+                  title: 'Account',
+                  subtitle: 'Address, theme, notifications & sign out',
                   icon: Icons.person_outline,
                   color: const Color(0xFF9B51E0),
                   screen: UserProfileScreen(
@@ -119,104 +121,114 @@ class UserDashboardScreen extends StatelessWidget {
               ]),
             ),
           ),
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
-            sliver: SliverToBoxAdapter(
-              child: Text(
-                'MANAGEMENT & INTEGRATION',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.grey[600],
-                  letterSpacing: 1.05,
+          if (user.role == UserRole.admin) ...[
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
+              sliver: SliverToBoxAdapter(
+                child: Text(
+                  'FULL CRUD — ALL 7 MODULES',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.grey[600],
+                    letterSpacing: 1.05,
+                  ),
                 ),
               ),
             ),
-          ),
-          SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            sliver: SliverList(
-              delegate: SliverChildListDelegate([
-                _ModuleTile(
-                  title: 'Admin overview',
-                  subtitle: 'Suite summary, roadmap & quick stats',
-                  icon: Icons.admin_panel_settings_outlined,
-                  color: const Color(0xFF1A1A2E),
-                  screen: const AdminDashboard(),
-                ),
-                _ModuleTile(
-                  title: 'User management',
-                  subtitle: 'Identity, access & member invites',
-                  icon: Icons.people_outline,
-                  color: const Color(0xFFF2994A),
-                  screen: const UserManagementDashboard(),
-                ),
-                _ModuleTile(
-                  title: 'Users (CRUD)',
-                  subtitle: 'Direct user records API',
-                  icon: Icons.badge_outlined,
-                  color: const Color(0xFFE67E22),
-                  screen: const UsersCrudScreen(),
-                ),
-                _ModuleTile(
-                  title: 'Inventory management',
-                  subtitle: 'Stock levels & alerts',
-                  icon: Icons.inventory_2_outlined,
-                  color: const Color(0xFFEB5757),
-                  screen: const InventoryManagementDashboard(),
-                ),
-                _ModuleTile(
-                  title: 'Delivery management',
-                  subtitle: 'Drivers, routes & delivery status',
-                  icon: Icons.delivery_dining_outlined,
-                  color: const Color(0xFF11A36A),
-                  screen: const DeliveryManagementDashboard(),
-                ),
-                _ModuleTile(
-                  title: 'Menu management',
-                  subtitle: 'Catalog, items & pricing',
-                  icon: Icons.restaurant_menu,
-                  color: const Color(0xFF9B51E0),
-                  screen: const MenuManagementDashboard(),
-                ),
-                _ModuleTile(
-                  title: 'Order & cart management',
-                  subtitle: 'Orders, carts & live status',
-                  icon: Icons.shopping_bag_outlined,
-                  color: const Color(0xFF4A90E2),
-                  screen: const OrderManagementDashboard(),
-                ),
-                _ModuleTile(
-                  title: 'Restaurant management',
-                  subtitle: 'Stores, images & fleet',
-                  icon: Icons.storefront_outlined,
-                  color: const Color(0xFFFF6A00),
-                  screen: const RestaurantManagementDashboard(),
-                ),
-                _ModuleTile(
-                  title: 'Stores (CRUD)',
-                  subtitle: 'Direct store records API',
-                  icon: Icons.store_mall_directory_outlined,
-                  color: const Color(0xFFD35400),
-                  screen: const StoresCrudScreen(),
-                ),
-                _ModuleTile(
-                  title: 'Finance & payments',
-                  subtitle: 'Ledger, revenue & transaction list',
-                  icon: Icons.account_balance_wallet_outlined,
-                  color: const Color(0xFF27AE60),
-                  screen: const PaymentManagementDashboard(),
-                ),
-                _ModuleTile(
-                  title: 'Payments & integration',
-                  subtitle: 'Records, methods & gateway-style flows',
-                  icon: Icons.integration_instructions_outlined,
-                  color: const Color(0xFF2D9CDB),
-                  screen: const PaymentsCrudScreen(),
-                ),
-              ]),
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              sliver: SliverList(
+                delegate: SliverChildListDelegate([
+                  _ModuleTile(
+                    title: 'Open 7-module CRUD suite',
+                    subtitle:
+                        'Tap each area for Create · Read · Update · Delete tools',
+                    icon: Icons.grid_view_rounded,
+                    color: const Color(0xFF1B4332),
+                    screen: const CrudSuiteScreen(),
+                  ),
+                  _ModuleTile(
+                    title: 'Admin overview',
+                    subtitle: 'Suite summary, roadmap & quick stats',
+                    icon: Icons.admin_panel_settings_outlined,
+                    color: const Color(0xFF1A1A2E),
+                    screen: const AdminDashboard(),
+                  ),
+                  _ModuleTile(
+                    title: 'User management',
+                    subtitle: 'Identity, access & member invites',
+                    icon: Icons.people_outline,
+                    color: const Color(0xFFF2994A),
+                    screen: const UserManagementDashboard(),
+                  ),
+                  _ModuleTile(
+                    title: 'Users (CRUD)',
+                    subtitle: 'Direct user records API',
+                    icon: Icons.badge_outlined,
+                    color: const Color(0xFFE67E22),
+                    screen: const UsersCrudScreen(),
+                  ),
+                  _ModuleTile(
+                    title: 'Inventory management',
+                    subtitle: 'Stock levels & alerts',
+                    icon: Icons.inventory_2_outlined,
+                    color: const Color(0xFFEB5757),
+                    screen: const InventoryManagementDashboard(),
+                  ),
+                  _ModuleTile(
+                    title: 'Delivery management',
+                    subtitle: 'Drivers, routes & delivery status',
+                    icon: Icons.delivery_dining_outlined,
+                    color: const Color(0xFF11A36A),
+                    screen: const DeliveryManagementDashboard(),
+                  ),
+                  _ModuleTile(
+                    title: 'Menu management',
+                    subtitle: 'Catalog, items, pricing & daily specials',
+                    icon: Icons.restaurant_menu,
+                    color: const Color(0xFF9B51E0),
+                    screen: const MenuManagementDashboard(),
+                  ),
+                  _ModuleTile(
+                    title: 'Order & cart management',
+                    subtitle: 'Orders, carts & live status',
+                    icon: Icons.shopping_bag_outlined,
+                    color: const Color(0xFF4A90E2),
+                    screen: const OrderManagementDashboard(),
+                  ),
+                  _ModuleTile(
+                    title: 'Restaurant management',
+                    subtitle: 'Stores, images & fleet',
+                    icon: Icons.storefront_outlined,
+                    color: const Color(0xFFFF6A00),
+                    screen: const RestaurantManagementDashboard(),
+                  ),
+                  _ModuleTile(
+                    title: 'Stores (CRUD)',
+                    subtitle: 'Direct store records API',
+                    icon: Icons.store_mall_directory_outlined,
+                    color: const Color(0xFFD35400),
+                    screen: const StoresCrudScreen(),
+                  ),
+                  _ModuleTile(
+                    title: 'Finance & payments (CRUD)',
+                    subtitle: 'Admin-only ledger & edits (owners see view-only)',
+                    icon: Icons.account_balance_wallet_outlined,
+                    color: const Color(0xFF27AE60),
+                    screen: const PaymentManagementDashboard(),
+                  ),
+                  _ModuleTile(
+                    title: 'Payments API (CRUD)',
+                    subtitle: 'Direct payment records — gateway-style',
+                    icon: Icons.integration_instructions_outlined,
+                    color: const Color(0xFF2D9CDB),
+                    screen: const PaymentsCrudScreen(),
+                  ),
+                ]),
+              ),
             ),
-          ),
+          ],
           const SliverPadding(padding: EdgeInsets.only(bottom: 32)),
         ],
       ),

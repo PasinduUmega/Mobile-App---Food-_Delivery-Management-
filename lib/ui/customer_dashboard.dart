@@ -3,10 +3,9 @@ import 'package:flutter/material.dart';
 import '../models.dart';
 import 'my_orders_screen.dart';
 import 'restaurant_dashboard.dart';
-import 'user_dashboard_screen.dart';
 import 'user_profile_screen.dart';
 
-/// Customer-facing shell: browse, orders, profile, plus full operations hub.
+/// Customer-only shell: browse, orders, profile (no admin or store tools).
 class CustomerDashboard extends StatefulWidget {
   final User user;
   final Function()? onSignOut;
@@ -26,57 +25,54 @@ class CustomerDashboard extends StatefulWidget {
 class _CustomerDashboardState extends State<CustomerDashboard> {
   int _selectedIndex = 0;
 
-  late final List<Widget> _screens = [
-    RestaurantDashboard(user: widget.user),
-    MyOrdersScreen(user: widget.user),
-    UserProfileScreen(
+  late final List<Widget> _screens;
+  late final List<NavigationDestination> _destinations;
+
+  @override
+  void initState() {
+    super.initState();
+    final profile = UserProfileScreen(
       user: widget.user,
       onSignOut: widget.onSignOut,
       onThemeChanged: widget.onThemeChanged,
-    ),
-    UserDashboardScreen(
-      user: widget.user,
-      onSignOut: widget.onSignOut,
-      onThemeChanged: widget.onThemeChanged,
-    ),
-  ];
+    );
+    final browse = RestaurantDashboard(user: widget.user);
+    final orders = MyOrdersScreen(user: widget.user);
+
+    _screens = [browse, orders, profile];
+    _destinations = const [
+      NavigationDestination(
+        icon: Icon(Icons.home_outlined),
+        selectedIcon: Icon(Icons.home_rounded),
+        label: 'Home',
+      ),
+      NavigationDestination(
+        icon: Icon(Icons.receipt_long_outlined),
+        selectedIcon: Icon(Icons.receipt_long_rounded),
+        label: 'Orders',
+      ),
+      NavigationDestination(
+        icon: Icon(Icons.person_outline),
+        selectedIcon: Icon(Icons.person_rounded),
+        label: 'Account',
+      ),
+    ];
+  }
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: IndexedStack(
-        index: _selectedIndex,
+        index: _selectedIndex.clamp(0, _screens.length - 1),
         children: _screens,
       ),
       bottomNavigationBar: NavigationBar(
-        selectedIndex: _selectedIndex,
+        selectedIndex: _selectedIndex.clamp(0, _destinations.length - 1),
         onDestinationSelected: (index) => setState(() => _selectedIndex = index),
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-        height: 68,
-        indicatorColor: cs.primaryContainer,
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.restaurant_menu_outlined),
-            selectedIcon: Icon(Icons.restaurant_menu),
-            label: 'Browse',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.receipt_long_outlined),
-            selectedIcon: Icon(Icons.receipt_long),
-            label: 'Orders',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.person_outline),
-            selectedIcon: Icon(Icons.person),
-            label: 'Profile',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.dashboard_customize_outlined),
-            selectedIcon: Icon(Icons.dashboard_customize),
-            label: 'Manage',
-          ),
-        ],
+        height: 72,
+        destinations: _destinations,
       ),
     );
   }

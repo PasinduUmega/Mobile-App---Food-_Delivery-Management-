@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
 
 import '../models.dart';
+import 'admin_shell_screen.dart';
 import 'customer_dashboard.dart';
+import 'driver_shell_screen.dart';
+import 'store_owner_shell_screen.dart';
 
-/// Entry point after sign-in: full customer dashboard (browse, orders, profile, admin).
-class HomeScreen extends StatelessWidget {
+/// Entry after sign-in: role-specific home (customer, admin, store owner, driver).
+class HomeDashboard extends StatelessWidget {
   final User user;
-  final Function()? onSignOut;
+  final VoidCallback? onSignOut;
   final ValueChanged<bool>? onThemeChanged;
 
-  const HomeScreen({
+  const HomeDashboard({
     super.key,
     required this.user,
     this.onSignOut,
@@ -18,10 +21,31 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CustomerDashboard(
-      user: user,
-      onSignOut: onSignOut,
-      onThemeChanged: onThemeChanged,
-    );
+    switch (user.role) {
+      case UserRole.admin:
+        return AdminShellScreen(
+          user: user,
+          onSignOut: onSignOut,
+          onThemeChanged: onThemeChanged,
+        );
+      case UserRole.customer:
+        return CustomerDashboard(
+          user: user,
+          onSignOut: onSignOut,
+          onThemeChanged: onThemeChanged,
+        );
+      case UserRole.storeOwner:
+        return StoreOwnerShellScreen(
+          user: user,
+          onSignOut: onSignOut,
+          onThemeChanged: onThemeChanged,
+        );
+      case UserRole.deliveryDriver:
+        return DriverShellScreen(
+          user: user,
+          onSignOut: onSignOut,
+          onThemeChanged: onThemeChanged,
+        );
+    }
   }
 }

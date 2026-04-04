@@ -4,7 +4,17 @@ import '../services/api.dart';
 import '../services/validators.dart';
 
 class DeliveryManagementDashboard extends StatefulWidget {
-  const DeliveryManagementDashboard({super.key});
+  /// When set, only deliveries for orders at this owner’s stores are listed.
+  final int? ownerUserId;
+
+  /// Store owners: watch drivers & status — no create/edit/delete.
+  final bool readOnly;
+
+  const DeliveryManagementDashboard({
+    super.key,
+    this.ownerUserId,
+    this.readOnly = false,
+  });
 
   @override
   State<DeliveryManagementDashboard> createState() =>
@@ -27,14 +37,171 @@ class _DeliveryManagementDashboardState
     setState(() => _loading = true);
     try {
       final items = await _api.listDeliveries();
+      var list = items;
+      if (widget.ownerUserId != null) {
+        final stores =
+            await _api.listStores(ownerUserId: widget.ownerUserId);
+        final storeIds = stores.map((s) => s.id).toSet();
+        final orders = await _api.listOrders(limit: 500);
+        final allowedOrderIds = orders
+            .where(
+              (o) => o.storeId != null && storeIds.contains(o.storeId),
+            )
+            .map((o) => o.orderId)
+            .toSet();
+        list =
+            items.where((d) => allowedOrderIds.contains(d.orderId)).toList();
+      }
       if (mounted)
         setState(() {
-          _deliveries = items;
+          _deliveries = list;
           _loading = false;
         });
     } catch (e) {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  Future<void> _showOwnerViewSheet(DeliveryInfo d) async {
+    OrderSummary? order;
+    User? customer;
+    List<Payment> payments = const [];
+    try {
+      order = await _api.getOrderDetails(id: d.orderId);
+      final uid = order.userId;
+      if (uid != null) {
+        try {
+          customer = await _api.getUser(id: uid);
+        } catch (_) {}
+      }
+      try {
+        payments = await _api.listPayments(orderId: d.orderId, limit: 10);
+      } catch (_) {}
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not load order: $e')),
+        );
+      }
+      return;
+    }
+    if (!mounted || order == null) return;
+    final o = order;
+    final captured =
+        payments.any((p) => p.status == 'CAPTURED');
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        final cs = Theme.of(ctx).colorScheme;
+        return DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.75,
+          minChildSize: 0.4,
+          maxChildSize: 0.92,
+          builder: (_, scroll) {
+            return ListView(
+              controller: scroll,
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+              children: [
+                Text(
+                  'Order #${o.orderId}',
+                  style: Theme.of(ctx).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w900,
+                      ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  captured
+                      ? 'Customer payment: received (captured in app).'
+                      : 'Customer payment: not fully captured yet — order may still be unpaid.',
+                  style: TextStyle(
+                    color: captured ? cs.primary : Colors.orange.shade800,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                  ),
+                ),
+                const Divider(height: 24),
+                if (customer != null) ...[
+                  _sheetRow(ctx, 'Customer', customer.name),
+                  _sheetRow(ctx, 'Email', customer.email),
+                ] else if (o.userId != null)
+                  _sheetRow(ctx, 'Customer id', '#${o.userId}'),
+                _sheetRow(ctx, 'Order status', o.status),
+                _sheetRow(ctx, 'Delivery status', d.status),
+                _sheetRow(
+                  ctx,
+                  'Total',
+                  '${o.currency} ${o.total.toStringAsFixed(2)}',
+                ),
+                const Divider(height: 24),
+                Text(
+                  'Items customer selected',
+                  style: Theme.of(ctx).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                ),
+                const SizedBox(height: 8),
+                if (o.items != null && o.items!.isNotEmpty)
+                  ...o.items!.map(
+                    (it) => Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              '${it.qty}× ${it.name}',
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                          Text(
+                            '${o.currency} ${it.lineTotal.toStringAsFixed(2)}',
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                else
+                  Text(
+                    'No line items returned.',
+                    style: TextStyle(color: cs.onSurfaceVariant),
+                  ),
+                const SizedBox(height: 16),
+                FilledButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Close'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _sheetRow(BuildContext ctx, String k, String v) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 110,
+            child: Text(
+              k,
+              style: TextStyle(color: Colors.grey[600], fontSize: 13),
+            ),
+          ),
+          Expanded(
+            child: Text(v, style: const TextStyle(fontWeight: FontWeight.w600)),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _create() async {
@@ -108,18 +275,26 @@ class _DeliveryManagementDashboardState
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Delivery & Logistics'),
+        title: Text(
+          widget.readOnly
+              ? 'Deliveries (my stores · view)'
+              : widget.ownerUserId != null
+                  ? 'Deliveries (filtered)'
+                  : 'Delivery & Logistics',
+        ),
         actions: [
           IconButton(onPressed: _load, icon: const Icon(Icons.refresh)),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _create,
-        backgroundColor: const Color(0xFFFF6A00),
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.add),
-        label: const Text('New Delivery'),
-      ),
+      floatingActionButton: widget.readOnly
+          ? null
+          : FloatingActionButton.extended(
+              onPressed: _create,
+              backgroundColor: const Color(0xFFFF6A00),
+              foregroundColor: Colors.white,
+              icon: const Icon(Icons.add),
+              label: const Text('New Delivery'),
+            ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _deliveries.isEmpty
@@ -153,7 +328,9 @@ class _DeliveryManagementDashboardState
                   ),
                   child: InkWell(
                     borderRadius: BorderRadius.circular(18),
-                    onTap: () => _edit(d),
+                    onTap: widget.readOnly
+                        ? () => _showOwnerViewSheet(d)
+                        : () => _edit(d),
                     child: Padding(
                       padding: const EdgeInsets.all(16),
                       child: Column(
@@ -217,25 +394,37 @@ class _DeliveryManagementDashboardState
                             ],
                           ),
                           const Divider(height: 32),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              const SizedBox(width: 8),
-                              TextButton.icon(
-                                onPressed: () => _edit(d),
-                                icon: const Icon(Icons.edit_outlined, size: 18),
-                                label: const Text('Edit'),
+                          if (widget.readOnly)
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: TextButton.icon(
+                                onPressed: () => _showOwnerViewSheet(d),
+                                icon: const Icon(Icons.visibility_outlined,
+                                    size: 18),
+                                label: const Text('Cart & payment'),
                               ),
-                              const SizedBox(width: 8),
-                              IconButton(
-                                onPressed: () => _delete(d),
-                                icon: const Icon(
-                                  Icons.delete_outline,
-                                  color: Colors.redAccent,
+                            )
+                          else
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                const SizedBox(width: 8),
+                                TextButton.icon(
+                                  onPressed: () => _edit(d),
+                                  icon: const Icon(Icons.edit_outlined,
+                                      size: 18),
+                                  label: const Text('Edit'),
                                 ),
-                              ),
-                            ],
-                          ),
+                                const SizedBox(width: 8),
+                                IconButton(
+                                  onPressed: () => _delete(d),
+                                  icon: const Icon(
+                                    Icons.delete_outline,
+                                    color: Colors.redAccent,
+                                  ),
+                                ),
+                              ],
+                            ),
                         ],
                       ),
                     ),

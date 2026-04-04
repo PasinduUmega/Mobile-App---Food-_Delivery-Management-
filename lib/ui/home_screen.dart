@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models.dart';
 import '../services/api.dart';
 import '../services/cart_manager.dart';
+import '../services/validators.dart';
 import 'widgets/app_feedback.dart';
 import 'auth_screen.dart';
 import 'order_management_dashboard.dart';
@@ -200,9 +201,17 @@ class _HomeScreenState extends State<HomeScreen> {
               name: item.name,
               qty: item.qty,
               unitPrice: item.unitPrice,
+              lineNote: item.lineNote,
             ),
           )
           .toList();
+
+      final cartErr = Validators.validateCartSubtotal(cartItems);
+      if (cartErr != null) {
+        if (!mounted) return;
+        AppFeedback.error(context, cartErr);
+        return;
+      }
 
       final order = await _api.createOrder(
         items: cartItems,
@@ -346,12 +355,41 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         subtitle: Padding(
                           padding: const EdgeInsets.only(top: 4),
-                          child: Text(
-                            'LKR ${item.price.toStringAsFixed(2)}',
-                            style: TextStyle(
-                              color: cs.primary,
-                              fontWeight: FontWeight.w700,
-                            ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'LKR ${item.price.toStringAsFixed(2)}',
+                                style: TextStyle(
+                                  color: cs.primary,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              if (item.isCombo) ...[
+                                const SizedBox(height: 6),
+                                Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: Chip(
+                                    label: const Text('Combo pack'),
+                                    visualDensity: VisualDensity.compact,
+                                    padding: EdgeInsets.zero,
+                                    labelStyle: const TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                                if (item.comboComponents.isNotEmpty)
+                                  Text(
+                                    item.comboComponents.join(' · '),
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: cs.onSurfaceVariant,
+                                      height: 1.3,
+                                    ),
+                                  ),
+                              ],
+                            ],
                           ),
                         ),
                         trailing: Row(

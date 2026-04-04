@@ -4,7 +4,10 @@ import '../services/api.dart';
 import 'order_tracking_screen.dart';
 
 class OrderManagementDashboard extends StatefulWidget {
-  const OrderManagementDashboard({super.key});
+  /// When set, only orders for this owner’s stores are listed.
+  final int? ownerUserId;
+
+  const OrderManagementDashboard({super.key, this.ownerUserId});
 
   @override
   State<OrderManagementDashboard> createState() =>
@@ -25,10 +28,21 @@ class _OrderManagementDashboardState extends State<OrderManagementDashboard> {
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final orders = await _api.listOrders();
+      final orders = await _api.listOrders(limit: 200);
+      var list = orders;
+      if (widget.ownerUserId != null) {
+        final stores =
+            await _api.listStores(ownerUserId: widget.ownerUserId);
+        final ids = stores.map((s) => s.id).toSet();
+        list = orders
+            .where(
+              (o) => o.storeId != null && ids.contains(o.storeId),
+            )
+            .toList();
+      }
       if (mounted) {
         setState(() {
-          _orders = orders;
+          _orders = list;
           _loading = false;
         });
       }
@@ -173,18 +187,24 @@ class _OrderManagementDashboardState extends State<OrderManagementDashboard> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Orders & Cart Management'),
+        title: Text(
+          widget.ownerUserId != null
+              ? 'Orders & carts (my stores)'
+              : 'Orders & Cart Management',
+        ),
         actions: [
           IconButton(onPressed: _load, icon: const Icon(Icons.refresh)),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _loading ? null : _create,
-        backgroundColor: const Color(0xFFFF6A00),
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.add),
-        label: const Text('New Order'),
-      ),
+      floatingActionButton: widget.ownerUserId != null
+          ? null
+          : FloatingActionButton.extended(
+              onPressed: _loading ? null : _create,
+              backgroundColor: const Color(0xFFFF6A00),
+              foregroundColor: Colors.white,
+              icon: const Icon(Icons.add),
+              label: const Text('New Order'),
+            ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _orders.isEmpty

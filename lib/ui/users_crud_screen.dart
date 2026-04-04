@@ -146,7 +146,7 @@ class _UsersCrudScreenState extends State<UsersCrudScreen> {
                 return Card(
                   child: ListTile(
                     title: Text(u.name),
-                    subtitle: Text(u.email),
+                    subtitle: Text('${u.email} · ${u.role.displayLabel}'),
                     onTap: () => _edit(u),
                     trailing: PopupMenuButton<String>(
                       onSelected: (v) {
@@ -180,6 +180,7 @@ class _UserEditDialogState extends State<_UserEditDialog> {
   late final TextEditingController _nameCtrl;
   late final TextEditingController _emailCtrl;
   late final TextEditingController _mobileCtrl;
+  late UserRole _selectedRole;
   bool _submitting = false;
 
   @override
@@ -189,6 +190,7 @@ class _UserEditDialogState extends State<_UserEditDialog> {
     _nameCtrl = TextEditingController(text: u?.name ?? '');
     _emailCtrl = TextEditingController(text: u?.email ?? '');
     _mobileCtrl = TextEditingController(text: u?.mobile ?? '');
+    _selectedRole = u?.role ?? UserRole.customer;
   }
 
   @override
@@ -239,6 +241,7 @@ class _UserEditDialogState extends State<_UserEditDialog> {
           name: name.trim(),
           email: email.trim(),
           mobile: mobile.isNotEmpty ? mobile : null,
+          role: _selectedRole,
         );
       }
       if (!mounted) return;

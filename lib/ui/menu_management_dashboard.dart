@@ -3,8 +3,18 @@ import '../models.dart';
 import '../services/api.dart';
 import '../services/validators.dart';
 
+String _isoDate(DateTime d) =>
+    '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
 class MenuManagementDashboard extends StatefulWidget {
-  const MenuManagementDashboard({super.key});
+  final int? ownerUserId;
+  final int? initialStoreId;
+
+  const MenuManagementDashboard({
+    super.key,
+    this.ownerUserId,
+    this.initialStoreId,
+  });
 
   @override
   State<MenuManagementDashboard> createState() =>
@@ -31,12 +41,19 @@ class _MenuManagementDashboardState extends State<MenuManagementDashboard> {
       _error = null;
     });
     try {
-      final stores = await _api.listStores();
+      final stores = await _api.listStores(ownerUserId: widget.ownerUserId);
       if (!mounted) return;
       setState(() {
         _stores = stores;
         if (_stores.isNotEmpty) {
-          _selectedStore = _stores.first;
+          final want = widget.initialStoreId;
+          if (want != null) {
+            final match = _stores.where((s) => s.id == want);
+            _selectedStore =
+                match.isNotEmpty ? match.first : _stores.first;
+          } else {
+            _selectedStore = _stores.first;
+          }
           _loadMenu();
         } else {
           _loading = false;
@@ -174,11 +191,60 @@ class _MenuManagementDashboardState extends State<MenuManagementDashboard> {
                     itemBuilder: (ctx, i) {
                       final item = _menuItems[i];
                       return ListTile(
-                        title: Text(
-                          item.name,
-                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        isThreeLine:
+                            item.specialForDate != null || item.isCombo,
+                        title: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                item.name,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            if (item.isCombo)
+                              Padding(
+                                padding: const EdgeInsets.only(left: 8),
+                                child: Chip(
+                                  label: const Text('Combo'),
+                                  visualDensity: VisualDensity.compact,
+                                  labelStyle: const TextStyle(fontSize: 10),
+                                  padding: EdgeInsets.zero,
+                                ),
+                              ),
+                          ],
                         ),
-                        subtitle: Text(item.description ?? 'No description'),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(item.description ?? 'No description'),
+                            if (item.isCombo &&
+                                item.comboComponents.isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 4),
+                                child: Text(
+                                  'Includes: ${item.comboComponents.join(', ')}',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey[700],
+                                  ),
+                                ),
+                              ),
+                            if (item.specialForDate != null)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 4),
+                                child: Text(
+                                  'Daily special · ${_isoDate(item.specialForDate!)}',
+                                  style: TextStyle(
+                                    color: Colors.orange[800],
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
@@ -227,6 +293,9 @@ class _MenuItemEditDialogState extends State<_MenuItemEditDialog> {
   late final TextEditingController _nameCtrl;
   late final TextEditingController _descCtrl;
   late final TextEditingController _priceCtrl;
+  late final TextEditingController _comboCtrl;
+  DateTime? _specialDate;
+  bool _isCombo = false;
   bool _submitting = false;
 
   @override
@@ -237,6 +306,17 @@ class _MenuItemEditDialogState extends State<_MenuItemEditDialog> {
     _priceCtrl = TextEditingController(
       text: widget.existing?.price.toString() ?? '',
     );
+    final ex = widget.existing;
+    _isCombo = ex?.isCombo ?? false;
+    _comboCtrl = TextEditingController(
+      text: ex != null && ex.comboComponents.isNotEmpty
+          ? ex.comboComponents.join('\n')
+          : '',
+    );
+    final s = widget.existing?.specialForDate;
+    _specialDate = s == null
+        ? null
+        : DateTime(s.year, s.month, s.day);
   }
 
   @override
@@ -244,7 +324,22 @@ class _MenuItemEditDialogState extends State<_MenuItemEditDialog> {
     _nameCtrl.dispose();
     _descCtrl.dispose();
     _priceCtrl.dispose();
+    _comboCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickSpecialDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _specialDate ?? DateTime.now(),
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2100),
+    );
+    if (picked != null) {
+      setState(
+        () => _specialDate = DateTime(picked.year, picked.month, picked.day),
+      );
+    }
   }
 
   void _showError(String msg) {
@@ -279,6 +374,18 @@ class _MenuItemEditDialogState extends State<_MenuItemEditDialog> {
     }
 
     final price = double.parse(priceText);
+    final specialIso =
+       _specialDate == null ? null : _isoDate(_specialDate!);
+
+    final comboParts = _comboCtrl.text
+        .split(RegExp(r'[\n,]+'))
+        .map((s) => s.trim())
+        .where((s) => s.isNotEmpty)
+        .toList();
+    if (_isCombo && comboParts.isEmpty) {
+      _showError('Combo pack: list what is included (one item per line).');
+      return;
+    }
 
     setState(() => _submitting = true);
     try {
@@ -288,6 +395,9 @@ class _MenuItemEditDialogState extends State<_MenuItemEditDialog> {
           name: name.trim(),
           price: price,
           description: desc.isEmpty ? null : desc.trim(),
+          specialForDate: specialIso,
+          isCombo: _isCombo,
+          comboComponents: _isCombo ? comboParts : null,
         );
       } else {
         await widget.api.updateMenuItem(
@@ -295,6 +405,11 @@ class _MenuItemEditDialogState extends State<_MenuItemEditDialog> {
           name: name.trim(),
           price: price,
           description: desc.isEmpty ? null : desc.trim(),
+          setSpecialForDate: true,
+          specialForDate: specialIso,
+          setComboFields: true,
+          isCombo: _isCombo,
+          comboComponents: _isCombo ? comboParts : <String>[],
         );
       }
       if (mounted) Navigator.pop(context, true);
@@ -312,9 +427,10 @@ class _MenuItemEditDialogState extends State<_MenuItemEditDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       title: Text(widget.existing == null ? 'Add Menu Item' : 'Edit Menu Item'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
           TextField(
             controller: _nameCtrl,
             decoration: InputDecoration(
@@ -349,7 +465,53 @@ class _MenuItemEditDialogState extends State<_MenuItemEditDialog> {
             keyboardType: TextInputType.number,
             onChanged: (_) => setState(() {}),
           ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _pickSpecialDate,
+                  icon: const Icon(Icons.event_available_outlined, size: 18),
+                  label: Text(
+                    _specialDate == null
+                        ? 'Daily special date (optional)'
+                        : 'Special: ${_isoDate(_specialDate!)}',
+                  ),
+                ),
+              ),
+              if (_specialDate != null)
+                IconButton(
+                  onPressed: () => setState(() => _specialDate = null),
+                  icon: const Icon(Icons.clear),
+                  tooltip: 'Clear special date',
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Combo pack'),
+            subtitle: const Text(
+              'Meal deal — customers & drivers see what is included',
+            ),
+            value: _isCombo,
+            onChanged: _submitting
+                ? null
+                : (v) => setState(() => _isCombo = v),
+          ),
+          if (_isCombo)
+            TextField(
+              controller: _comboCtrl,
+              maxLines: 4,
+              decoration: const InputDecoration(
+                labelText: 'What’s in the combo',
+                hintText: 'One line per item, e.g.\nBurger\nFries\nDrink',
+                alignLabelWithHint: true,
+              ),
+              onChanged: (_) => setState(() {}),
+            ),
         ],
+        ),
       ),
       actions: [
         TextButton(

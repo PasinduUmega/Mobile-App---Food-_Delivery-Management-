@@ -1,3 +1,5 @@
+import '../models.dart';
+
 /// Centralized validation utilities for all input forms
 class Validators {
   /// Validate required string field
@@ -212,6 +214,44 @@ class Validators {
     }
     if (price > 999999.99) {
       return 'Price is too high';
+    }
+    return null;
+  }
+
+  static const int maxCartLineQty = 50;
+
+  /// Quantity rules before add/update cart (matches server `MAX_CART_LINE_QTY`).
+  static String? validateCartLineQty(int qty, {int? maxStock}) {
+    if (qty <= 0) return 'Quantity must be at least 1';
+    if (qty > maxCartLineQty) {
+      return 'Maximum $maxCartLineQty per item in the cart';
+    }
+    if (maxStock != null && qty > maxStock) {
+      return 'Only $maxStock available in stock';
+    }
+    return null;
+  }
+
+  /// Validates in-cart lines and computed subtotal (no negative qty/price/subtotal).
+  static String? validateCartSubtotal(List<CartItem> items) {
+    if (items.isEmpty) return null;
+    double subtotal = 0;
+    for (final c in items) {
+      final qErr = validateCartLineQty(c.qty);
+      if (qErr != null) return '${c.name}: $qErr';
+      if (c.qty < 0) {
+        return 'Quantity cannot be negative for "${c.name}".';
+      }
+      if (c.unitPrice < 0) {
+        return 'Unit price cannot be negative for "${c.name}".';
+      }
+      if (c.qty > 0 && c.unitPrice <= 0) {
+        return 'Each item in the cart needs a price greater than zero.';
+      }
+      subtotal += c.qty * c.unitPrice;
+    }
+    if (subtotal < 0) {
+      return 'Cart subtotal cannot be negative. Remove or adjust items with invalid prices.';
     }
     return null;
   }

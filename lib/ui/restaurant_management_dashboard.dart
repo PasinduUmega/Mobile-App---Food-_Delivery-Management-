@@ -7,7 +7,10 @@ import '../services/validators.dart';
 import 'menu_management_dashboard.dart';
 
 class RestaurantManagementDashboard extends StatefulWidget {
-  const RestaurantManagementDashboard({super.key});
+  /// When set, only stores owned by this user are listed and new stores are assigned to them.
+  final int? ownerUserId;
+
+  const RestaurantManagementDashboard({super.key, this.ownerUserId});
 
   @override
   State<RestaurantManagementDashboard> createState() =>
@@ -31,7 +34,8 @@ class _RestaurantManagementDashboardState
       _loading = true;
     });
     try {
-      final items = await _api.listStores();
+      final items =
+          await _api.listStores(ownerUserId: widget.ownerUserId);
       if (mounted) setState(() => _items = items);
     } catch (e) {
       if (mounted)
@@ -90,7 +94,11 @@ class _RestaurantManagementDashboardState
     return showDialog<bool>(
       context: context,
       barrierDismissible: false,
-      builder: (_) => _RestaurantEditDialog(existing: existing, api: _api),
+      builder: (_) => _RestaurantEditDialog(
+        existing: existing,
+        api: _api,
+        defaultOwnerUserId: widget.ownerUserId,
+      ),
     );
   }
 
@@ -428,7 +436,10 @@ class _RestaurantManagementDashboardState
                       onPressed: () => Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => const MenuManagementDashboard(),
+                          builder: (_) => MenuManagementDashboard(
+                            ownerUserId: widget.ownerUserId,
+                            initialStoreId: store.id,
+                          ),
                         ),
                       ),
                       icon: const Icon(Icons.restaurant_menu, size: 16),
@@ -468,7 +479,13 @@ class _RestaurantManagementDashboardState
 class _RestaurantEditDialog extends StatefulWidget {
   final Store? existing;
   final ApiClient api;
-  const _RestaurantEditDialog({this.existing, required this.api});
+  final int? defaultOwnerUserId;
+
+  const _RestaurantEditDialog({
+    this.existing,
+    required this.api,
+    this.defaultOwnerUserId,
+  });
   @override
   State<_RestaurantEditDialog> createState() => _RestaurantEditDialogState();
 }
@@ -522,6 +539,7 @@ class _RestaurantEditDialogState extends State<_RestaurantEditDialog> {
         final s = await widget.api.createStore(
           name: name,
           address: addressParam,
+          ownerUserId: widget.defaultOwnerUserId,
         );
         if (_selectedImage != null) {
           await widget.api.uploadStoreImage(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models.dart';
+import '../services/api.dart';
 import 'auth_screen.dart';
 import 'home_dashboard.dart';
 import 'widgets/app_feedback.dart';
@@ -33,6 +34,7 @@ class _AppShellState extends State<AppShell> {
   }
 
   Future<void> _onSignIn(User user) async {
+    ApiClient.sessionUserId = user.id;
     setState(() => _currentUser = user);
     if (mounted) {
       AppFeedback.success(context, 'Welcome back, ${user.name}!');
@@ -50,22 +52,26 @@ class _AppShellState extends State<AppShell> {
   Widget build(BuildContext context) {
     if (_loading) {
       return Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(
-                Icons.local_dining,
-                size: 48,
+                Icons.delivery_dining_rounded,
+                size: 52,
                 color: Theme.of(context).colorScheme.primary,
               ),
               const SizedBox(height: 20),
-              const CircularProgressIndicator(),
+              CircularProgressIndicator(
+                color: Theme.of(context).colorScheme.primary,
+              ),
               const SizedBox(height: 16),
               Text(
-                'Opening Food Rush…',
+                'Loading menus & offers…',
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w500,
                     ),
               ),
             ],
@@ -80,7 +86,7 @@ class _AppShellState extends State<AppShell> {
     }
 
     // Show main app if logged in
-    return HomeScreen(
+    return HomeDashboard(
       user: _currentUser!,
       onSignOut: _onSignOut,
       onThemeChanged: widget.onThemeChanged,

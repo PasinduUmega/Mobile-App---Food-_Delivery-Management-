@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../models.dart';
 import '../services/api.dart';
 import 'order_tracking_screen.dart';
@@ -14,6 +15,7 @@ class MyOrdersScreen extends StatefulWidget {
 class _MyOrdersScreenState extends State<MyOrdersScreen> {
   final _api = ApiClient();
   bool _loading = true;
+  String? _error;
   List<OrderSummary> _orders = [];
 
   @override
@@ -23,56 +25,295 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
   }
 
   Future<void> _load() async {
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
-      final items = await _api.listOrders();
-      // Filter for current user only
-      if (mounted) {
-        setState(() {
-          _orders = items.where((o) => o.userId == widget.user.id).toList();
-          _loading = false;
-        });
-      }
+      final items = await _api.listOrders(limit: 80);
+      if (!mounted) return;
+      final mine = items.where((o) => o.userId == widget.user.id).toList()
+        ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      setState(() {
+        _orders = mine;
+        _loading = false;
+      });
     } catch (e) {
-      if (mounted) setState(() => _loading = false);
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = 'Could not load your orders. Pull down to try again.';
+      });
     }
+  }
+
+  static String _statusLabel(String raw) {
+    switch (raw) {
+      case 'PENDING_PAYMENT':
+        return 'Payment pending';
+      case 'PAID':
+        return 'Paid · preparing';
+      case 'PREPARING':
+        return 'Preparing your food';
+      case 'READY':
+        return 'Ready for pickup';
+      case 'COMPLETED':
+        return 'Delivered';
+      case 'CANCELLED':
+        return 'Cancelled';
+      case 'FAILED':
+        return 'Failed';
+      default:
+        return raw.replaceAll('_', ' ').toLowerCase();
+    }
+  }
+
+  static Color _statusColor(String status, ColorScheme cs) {
+    switch (status) {
+      case 'COMPLETED':
+        return cs.primary;
+      case 'CANCELLED':
+      case 'FAILED':
+        return cs.error;
+      case 'PENDING_PAYMENT':
+        return Colors.orange.shade800;
+      default:
+        return cs.onSurfaceVariant;
+    }
+  }
+
+  String _shortDate(DateTime d) {
+    return '${d.day}/${d.month}/${d.year} · ${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
   }
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final ink = cs.onSurface;
+
     return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text('My Orders'),
-        actions: [IconButton(onPressed: _load, icon: const Icon(Icons.refresh))],
+        title: const Text('Orders'),
+        actions: [
+          IconButton(
+            tooltip: 'Refresh',
+            onPressed: _loading ? null : _load,
+            icon: const Icon(Icons.refresh_rounded),
+          ),
+        ],
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _orders.isEmpty
-              ? const Center(child: Text('You have no orders yet.'))
-              : ListView.builder(
-                  itemCount: _orders.length,
-                  itemBuilder: (ctx, i) {
-                    final o = _orders[i];
-                    return Card(
-                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      child: ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor: Colors.orange.shade100,
-                          child: Text('#${o.orderId}', style: const TextStyle(fontSize: 10)),
+          ? Center(child: CircularProgressIndicator(color: cs.primary))
+          : RefreshIndicator(
+              color: cs.primary,
+              onRefresh: _load,
+              child: _error != null && _orders.isEmpty
+                  ? ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.all(32),
+                      children: [
+                        const SizedBox(height: 48),
+                        Icon(
+                          Icons.cloud_off_outlined,
+                          size: 56,
+                          color: Colors.grey[400],
                         ),
-                        title: Text('Status: ${o.status}'),
-                        subtitle: Text('Total: ${o.currency} ${o.total.toStringAsFixed(2)}'),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.location_on, color: Colors.blue),
-                          onPressed: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (_) => OrderTrackingScreen(order: o)),
+                        const SizedBox(height: 20),
+                        Text(
+                          _error!,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: ink,
+                            fontSize: 16,
+                            height: 1.4,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
-                      ),
-                    );
-                  },
-                ),
+                      ],
+                    )
+                  : _orders.isEmpty
+                      ? ListView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 32,
+                            vertical: 48,
+                          ),
+                          children: [
+                            Icon(
+                              Icons.receipt_long_rounded,
+                              size: 64,
+                              color: Colors.grey.shade300,
+                            ),
+                            const SizedBox(height: 20),
+                            Text(
+                              'No orders yet',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.w800,
+                                color: ink,
+                                letterSpacing: -0.5,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            Text(
+                              'When you order from Home, your delivery updates '
+                              'and receipts show up here — same idea as Uber Eats.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: cs.onSurfaceVariant,
+                                fontSize: 15,
+                                height: 1.45,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Tip: open the Home tab, pick a restaurant, then '
+                              'add items and check out.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: cs.onSurfaceVariant,
+                                fontSize: 14,
+                                height: 1.4,
+                              ),
+                            ),
+                          ],
+                        )
+                      : ListView.builder(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                          itemCount: _orders.length,
+                          itemBuilder: (ctx, i) {
+                            final o = _orders[i];
+                            final stColor = _statusColor(o.status, cs);
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: Material(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                                clipBehavior: Clip.antiAlias,
+                                child: InkWell(
+                                  onTap: () {
+                                    Navigator.push<void>(
+                                      context,
+                                      MaterialPageRoute<void>(
+                                        builder: (_) =>
+                                            OrderTrackingScreen(order: o),
+                                      ),
+                                    );
+                                  },
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(14),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                horizontal: 10,
+                                                vertical: 5,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                color: stColor.withOpacity(0.12),
+                                                borderRadius:
+                                                    BorderRadius.circular(20),
+                                              ),
+                                              child: Text(
+                                                _statusLabel(o.status),
+                                                style: TextStyle(
+                                                  color: stColor,
+                                                  fontWeight: FontWeight.w700,
+                                                  fontSize: 12,
+                                                ),
+                                              ),
+                                            ),
+                                            const Spacer(),
+                                            Text(
+                                              '#${o.orderId}',
+                                              style: TextStyle(
+                                                color: cs.onSurfaceVariant,
+                                                fontWeight: FontWeight.w600,
+                                                fontSize: 13,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 12),
+                                        Row(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Icon(
+                                              Icons.storefront_outlined,
+                                              size: 20,
+                                              color: cs.primary,
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    'Order total',
+                                                    style: TextStyle(
+                                                      fontSize: 12,
+                                                      color: cs
+                                                          .onSurfaceVariant,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 2),
+                                                  Text(
+                                                    '${o.currency} ${o.total.toStringAsFixed(2)}',
+                                                    style: TextStyle(
+                                                      fontSize: 18,
+                                                      fontWeight:
+                                                          FontWeight.w800,
+                                                      color: ink,
+                                                      letterSpacing: -0.3,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                            Icon(
+                                              Icons.chevron_right_rounded,
+                                              color: Colors.grey[400],
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          _shortDate(o.createdAt),
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            color: cs.onSurfaceVariant,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          'Tap for tracking & details',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: cs.primary,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+            ),
     );
   }
 }

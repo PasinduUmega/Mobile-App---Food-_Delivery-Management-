@@ -100,11 +100,18 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Profile'), elevation: 1),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      appBar: AppBar(
+        title: const Text('Account'),
+      ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(
+              child: CircularProgressIndicator(
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            )
           : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -139,6 +146,21 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                           style: TextStyle(
                             color: Colors.grey[600],
                             fontSize: 14,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Chip(
+                          avatar: Icon(
+                            Icons.badge_outlined,
+                            size: 18,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                          label: Text(
+                            widget.user.role.displayLabel,
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                          side: BorderSide(
+                            color: Theme.of(context).colorScheme.outlineVariant,
                           ),
                         ),
                       ],
@@ -234,6 +256,41 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                                       const SizedBox(height: 4),
                                       Text(
                                         widget.user.mobile!,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Divider(color: Colors.grey[200]),
+                              ],
+                            ),
+                          if (widget.user.address != null &&
+                              widget.user.address!.trim().isNotEmpty)
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 8,
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      const Text(
+                                        'Address & location',
+                                        style: TextStyle(
+                                          color: Colors.grey,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        widget.user.address!,
                                         style: const TextStyle(
                                           fontWeight: FontWeight.w600,
                                           fontSize: 16,

@@ -143,7 +143,10 @@ class _UserManagementDashboardState extends State<UserManagementDashboard> {
                         Expanded(
                           child: _buildStatCard(
                             'Admin Privileges',
-                            '3',
+                            _items
+                                .where((u) => u.role == UserRole.admin)
+                                .length
+                                .toString(),
                             Icons.shield_outlined,
                             const Color(0xFF11A36A),
                           ),
@@ -390,14 +393,22 @@ class _UserManagementDashboardState extends State<UserManagementDashboard> {
               const SizedBox(height: 4),
               Row(
                 children: [
-                  const Icon(Icons.shield, size: 12, color: Colors.blue),
+                  Icon(
+                    Icons.badge_outlined,
+                    size: 12,
+                    color: user.role == UserRole.admin
+                        ? const Color(0xFF11A36A)
+                        : Colors.grey[600],
+                  ),
                   const SizedBox(width: 4),
-                  const Text(
-                    'Admin Access',
+                  Text(
+                    user.role.displayLabel,
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.bold,
-                      color: Colors.blue,
+                      color: user.role == UserRole.admin
+                          ? const Color(0xFF11A36A)
+                          : Colors.grey[700],
                     ),
                   ),
                 ],
@@ -434,6 +445,7 @@ class _UserEditDialogState extends State<_UserEditDialog> {
   late final TextEditingController _nameCtrl;
   late final TextEditingController _emailCtrl;
   late final TextEditingController _mobileCtrl;
+  late UserRole _selectedRole;
   bool _submitting = false;
 
   @override
@@ -442,6 +454,7 @@ class _UserEditDialogState extends State<_UserEditDialog> {
     _nameCtrl = TextEditingController(text: widget.existing?.name ?? '');
     _emailCtrl = TextEditingController(text: widget.existing?.email ?? '');
     _mobileCtrl = TextEditingController(text: widget.existing?.mobile ?? '');
+    _selectedRole = widget.existing?.role ?? UserRole.customer;
   }
 
   Future<void> _save() async {
@@ -495,6 +508,7 @@ class _UserEditDialogState extends State<_UserEditDialog> {
           name: nameText,
           email: emailText,
           mobile: mobileText.isEmpty ? null : mobileText,
+          role: _selectedRole,
         );
       }
       if (mounted) Navigator.pop(context, true);
@@ -550,37 +564,49 @@ class _UserEditDialogState extends State<_UserEditDialog> {
             ),
             const SizedBox(height: 16),
 
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 8),
-              child: Text(
-                'ASSIGN ROLES',
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.grey,
+            if (widget.existing != null) ...[
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 8),
+                child: Text(
+                  'ROLE',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.grey,
+                  ),
                 ),
               ),
-            ),
-            Wrap(
-              spacing: 8,
-              children: [
-                FilterChip(
-                  label: const Text('Admin'),
-                  onSelected: (_) {},
-                  selected: true,
+              DropdownButtonFormField<UserRole>(
+                value: _selectedRole,
+                decoration: const InputDecoration(
+                  labelText: 'Access level',
+                  prefixIcon: Icon(Icons.manage_accounts_outlined),
                 ),
-                FilterChip(
-                  label: const Text('Delivery Agent'),
-                  onSelected: (_) {},
-                  selected: false,
-                ),
-                FilterChip(
-                  label: const Text('Store Owner'),
-                  onSelected: (_) {},
-                  selected: false,
-                ),
-              ],
-            ),
+                items: UserRole.values
+                    .map(
+                      (r) => DropdownMenuItem(
+                        value: r,
+                        child: Text(r.displayLabel),
+                      ),
+                    )
+                    .toList(),
+                onChanged: _submitting
+                    ? null
+                    : (v) {
+                        if (v != null) setState(() => _selectedRole = v);
+                      },
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Only a signed-in administrator can change roles (enforced on the server).',
+                style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+              ),
+            ] else ...[
+              Text(
+                'New members start as Customer. After they appear in the list, edit them to assign restaurant owner, driver, or admin.',
+                style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+              ),
+            ],
 
             const SizedBox(height: 32),
             Row(

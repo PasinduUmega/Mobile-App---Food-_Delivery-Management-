@@ -15,6 +15,9 @@ class _TimeoutClient extends http.BaseClient {
 }
 
 class ApiClient {
+  /// Set when the user signs in so the server can authorize admin-only actions (e.g. role changes).
+  static int? sessionUserId;
+
   final String baseUrl;
   final http.Client _http;
 
@@ -24,6 +27,13 @@ class ApiClient {
         '',
       ),
       _http = httpClient ?? _TimeoutClient();
+
+  Map<String, String> _jsonHeadersWithSession() {
+    final h = <String, String>{'Content-Type': 'application/json'};
+    final id = sessionUserId;
+    if (id != null) h['X-User-Id'] = id.toString();
+    return h;
+  }
 
   Future<CreatedOrder> createOrder({
     required List<CartItem> items,
@@ -288,15 +298,19 @@ class ApiClient {
     required String name,
     required String email,
     String? mobile,
+    UserRole? role,
   }) async {
     final uri = Uri.parse('$baseUrl/api/users/$id');
-    final body = {'name': name, 'email': email};
+    final body = <String, dynamic>{'name': name, 'email': email};
     if (mobile != null && mobile.isNotEmpty) {
       body['mobile'] = mobile;
     }
+    if (role != null) {
+      body['role'] = role.apiValue;
+    }
     final resp = await _http.put(
       uri,
-      headers: {'Content-Type': 'application/json'},
+      headers: _jsonHeadersWithSession(),
       body: jsonEncode(body),
     );
     final respBody = _decode(resp);
@@ -324,18 +338,26 @@ class ApiClient {
     required String password,
     String? mobile,
     String? address,
+    UserRole accountRole = UserRole.customer,
   }) async {
     final uri = Uri.parse('$baseUrl/api/auth/signup');
+    final payload = <String, dynamic>{
+      'name': name,
+      'email': email,
+      'password': password,
+      // Server expects uppercase role token (ADMIN, CUSTOMER, …)
+      'role': accountRole.apiValue,
+    };
+    if (mobile != null && mobile.trim().isNotEmpty) {
+      payload['mobile'] = mobile.trim();
+    }
+    if (address != null && address.trim().isNotEmpty) {
+      payload['address'] = address.trim();
+    }
     final resp = await _http.post(
       uri,
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'name': name,
-        'email': email,
-        'password': password,
-        'mobile': mobile,
-        'address': address,
-      }),
+      body: jsonEncode(payload),
     );
     final body = _decode(resp);
     if (resp.statusCode < 200 || resp.statusCode >= 300) {
@@ -386,6 +408,9 @@ class ApiClient {
     required double price,
     String? description,
     String? imageUrl,
+    String? specialForDate,
+    bool isCombo = false,
+    List<String>? comboComponents,
   }) async {
     final uri = Uri.parse('$baseUrl/api/menu_items');
     final resp = await _http.post(
@@ -397,6 +422,10 @@ class ApiClient {
         'price': price,
         'description': description,
         'imageUrl': imageUrl,
+        if (specialForDate != null) 'specialForDate': specialForDate,
+        'isCombo': isCombo,
+        if (comboComponents != null && comboComponents.isNotEmpty)
+          'comboComponents': comboComponents,
       }),
     );
     final body = _decode(resp);
@@ -414,6 +443,11 @@ class ApiClient {
     double? price,
     String? description,
     String? imageUrl,
+    String? specialForDate,
+    bool setSpecialForDate = false,
+    bool? isCombo,
+    List<String>? comboComponents,
+    bool setComboFields = false,
   }) async {
     final uri = Uri.parse('$baseUrl/api/menu_items/$id');
     final data = <String, dynamic>{
@@ -421,6 +455,11 @@ class ApiClient {
       if (price != null) 'price': price,
       if (description != null) 'description': description,
       if (imageUrl != null) 'imageUrl': imageUrl,
+      if (setSpecialForDate) 'specialForDate': specialForDate,
+      if (setComboFields) ...{
+        'isCombo': isCombo ?? false,
+        'comboComponents': comboComponents ?? <String>[],
+      },
     };
     final resp = await _http.put(
       uri,
@@ -618,8 +657,12 @@ class ApiClient {
     return body['deleted'] == true;
   }
 
-  Future<List<Store>> listStores() async {
-    final uri = Uri.parse('$baseUrl/api/stores');
+  Future<List<Store>> listStores({int? ownerUserId}) async {
+    final uri = Uri.parse('$baseUrl/api/stores').replace(
+      queryParameters: {
+        if (ownerUserId != null) 'ownerUserId': '$ownerUserId',
+      },
+    );
     final resp = await _http.get(uri);
     final body = _decode(resp);
     if (resp.statusCode < 200 || resp.statusCode >= 300) {
@@ -650,6 +693,7 @@ class ApiClient {
     String? address,
     double? latitude,
     double? longitude,
+    int? ownerUserId,
   }) async {
     final uri = Uri.parse('$baseUrl/api/stores');
     final resp = await _http.post(
@@ -660,6 +704,7 @@ class ApiClient {
         'address': address,
         'latitude': latitude,
         'longitude': longitude,
+        if (ownerUserId != null) 'ownerUserId': ownerUserId,
       }),
     );
     final body = _decode(resp);
@@ -675,19 +720,25 @@ class ApiClient {
     String? address,
     double? latitude,
     double? longitude,
+    int? ownerUserId,
+    bool patchOwnerUserId = false,
   }) async {
     final uri = Uri.parse('$baseUrl/api/stores/$id');
+    final body = <String, dynamic>{
+      'name': name,
+      'address': address,
+      'latitude': latitude,
+      'longitude': longitude,
+    };
+    if (patchOwnerUserId) {
+      body['ownerUserId'] = ownerUserId;
+    }
     final resp = await _http.put(
       uri,
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'name': name,
-        'address': address,
-        'latitude': latitude,
-        'longitude': longitude,
-      }),
+      body: jsonEncode(body),
     );
-    final body = _decode(resp);
+    final _ = _decode(resp);
     if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw ApiException(body['error']?.toString() ?? 'Failed to update store');
     }
@@ -876,6 +927,7 @@ class ApiClient {
     required String name,
     required int qty,
     required double unitPrice,
+    String? lineNote,
   }) async {
     final uri = Uri.parse('$baseUrl/api/carts/$cartId/items');
     final resp = await _http.post(
@@ -886,6 +938,7 @@ class ApiClient {
         'name': name,
         'qty': qty,
         'unitPrice': unitPrice,
+        if (lineNote != null && lineNote.trim().isNotEmpty) 'lineNote': lineNote,
       }),
     );
     final body = _decode(resp);
@@ -965,7 +1018,9 @@ class ApiClient {
   Map<String, dynamic> _decode(http.Response resp) {
     try {
       final decoded = jsonDecode(resp.body);
-      if (decoded is Map<String, dynamic>) return decoded;
+      if (decoded is Map) {
+        return Map<String, dynamic>.from(decoded);
+      }
     } catch (_) {}
     return <String, dynamic>{};
   }

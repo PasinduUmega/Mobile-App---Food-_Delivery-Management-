@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../models.dart';
 import 'api.dart';
+import 'validators.dart';
 
 /// Manages persistent shopping cart with backend synchronization
 class CartManager extends ChangeNotifier {
@@ -100,6 +101,15 @@ class CartManager extends ChangeNotifier {
       _error = 'Cart not initialized';
       notifyListeners();
       return;
+    }
+
+    if (newQty > 0) {
+      final qErr = Validators.validateCartLineQty(newQty);
+      if (qErr != null) {
+        _error = qErr;
+        notifyListeners();
+        return;
+      }
     }
 
     _isLoading = true;

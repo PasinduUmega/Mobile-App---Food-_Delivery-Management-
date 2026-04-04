@@ -26,6 +26,7 @@ class _AuthScreenState extends State<AuthScreen>
   bool _isSignIn = true;
   bool _loading = false;
   String? _error;
+  UserRole _signupAccountRole = UserRole.customer;
 
   @override
   void initState() {
@@ -103,6 +104,7 @@ class _AuthScreenState extends State<AuthScreen>
               password: password,
               mobile: mobile.isEmpty ? null : mobile,
               address: address.isEmpty ? null : address,
+              accountRole: _signupAccountRole,
             );
       if (!mounted) return;
       widget.onUserAuthenticated(user);
@@ -139,48 +141,66 @@ class _AuthScreenState extends State<AuthScreen>
     setState(() => _error = null);
   }
 
+  /// Short label when the account-type dropdown is closed (avoids horizontal overflow).
+  Widget _accountTypeCollapsed(UserRole role) {
+    return Text(
+      role.displayLabel,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    const ink = Color(0xFF1F1F1F);
+
     return Scaffold(
+      backgroundColor: cs.surface,
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // Hero section with gradient
             Container(
               width: double.infinity,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Theme.of(context).colorScheme.primary,
-                    Theme.of(context).colorScheme.primary.withOpacity(0.8),
-                  ],
-                ),
-              ),
-              padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 24),
+              color: const Color(0xFFF6F6F6),
+              padding: const EdgeInsets.fromLTRB(24, 52, 24, 32),
               child: Column(
                 children: [
-                  Icon(Icons.restaurant, size: 64, color: Colors.white),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Food Rush',
-                    style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                  Container(
+                    width: 64,
+                    height: 64,
+                    decoration: BoxDecoration(
+                      color: cs.primary,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: const Icon(
+                      Icons.delivery_dining_rounded,
+                      size: 36,
                       color: Colors.white,
-                      fontWeight: FontWeight.w700,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 20),
                   Text(
-                    _isSignIn ? 'Welcome Back' : 'Get Started',
-                    style: Theme.of(
-                      context,
-                    ).textTheme.bodyLarge?.copyWith(color: Colors.white70),
+                    'Food Rush',
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                          color: ink,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: -0.8,
+                        ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    _isSignIn
+                        ? 'Sign in to order delivery'
+                        : 'Create your account',
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                          color: Colors.grey[700],
+                          fontWeight: FontWeight.w500,
+                        ),
                   ),
                 ],
               ),
             ),
-            // Form section
             Padding(
               padding: const EdgeInsets.all(24),
               child: Column(
@@ -241,7 +261,7 @@ class _AuthScreenState extends State<AuthScreen>
                         hintText: 'Enter your full name',
                         prefixIcon: const Icon(Icons.person_outline),
                         filled: true,
-                        fillColor: Colors.grey[100],
+                        fillColor: Colors.white,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide.none,
@@ -270,7 +290,7 @@ class _AuthScreenState extends State<AuthScreen>
                       hintText: 'Enter your email',
                       prefixIcon: const Icon(Icons.email_outlined),
                       filled: true,
-                      fillColor: Colors.grey[100],
+                      fillColor: Colors.white,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide: BorderSide.none,
@@ -298,7 +318,7 @@ class _AuthScreenState extends State<AuthScreen>
                       hintText: 'Enter your password',
                       prefixIcon: const Icon(Icons.lock_outline),
                       filled: true,
-                      fillColor: Colors.grey[100],
+                      fillColor: Colors.white,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide: BorderSide.none,
@@ -308,6 +328,74 @@ class _AuthScreenState extends State<AuthScreen>
                         vertical: 14,
                       ),
                     ),
+                  ),
+                  const SizedBox(height: 18),
+                  Text(
+                    'Account type',
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _isSignIn
+                        ? 'Used when you tap Sign Up — includes Administrator for a new admin account.'
+                        : 'Your new account will be created with this role.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[600],
+                      height: 1.3,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  DropdownButtonFormField<UserRole>(
+                    value: _signupAccountRole,
+                    isExpanded: true,
+                    decoration: InputDecoration(
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 4,
+                      ),
+                    ),
+                    selectedItemBuilder: (BuildContext context) {
+                      return [
+                        _accountTypeCollapsed(UserRole.customer),
+                        _accountTypeCollapsed(UserRole.storeOwner),
+                        _accountTypeCollapsed(UserRole.deliveryDriver),
+                        _accountTypeCollapsed(UserRole.admin),
+                      ];
+                    },
+                    items: const [
+                      DropdownMenuItem(
+                        value: UserRole.customer,
+                        child: Text('Customer — order food'),
+                      ),
+                      DropdownMenuItem(
+                        value: UserRole.storeOwner,
+                        child: Text('Restaurant owner — manage store & menu'),
+                      ),
+                      DropdownMenuItem(
+                        value: UserRole.deliveryDriver,
+                        child: Text('Delivery driver — assigned runs & status'),
+                      ),
+                      DropdownMenuItem(
+                        value: UserRole.admin,
+                        child: Text('Administrator — full control & CRUD'),
+                      ),
+                    ],
+                    onChanged: _loading
+                        ? null
+                        : (v) {
+                            if (v != null) {
+                              setState(() => _signupAccountRole = v);
+                            }
+                          },
                   ),
                   if (!_isSignIn) ...[
                     const SizedBox(height: 18),
@@ -326,7 +414,7 @@ class _AuthScreenState extends State<AuthScreen>
                         hintText: 'Enter your mobile (optional)',
                         prefixIcon: const Icon(Icons.phone_outlined),
                         filled: true,
-                        fillColor: Colors.grey[100],
+                        fillColor: Colors.white,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide.none,
@@ -352,7 +440,7 @@ class _AuthScreenState extends State<AuthScreen>
                         hintText: 'Enter your address (optional)',
                         prefixIcon: const Icon(Icons.home_outlined),
                         filled: true,
-                        fillColor: Colors.grey[100],
+                        fillColor: Colors.white,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide.none,

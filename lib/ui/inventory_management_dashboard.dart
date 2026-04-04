@@ -4,7 +4,10 @@ import '../services/api.dart';
 import '../services/validators.dart';
 
 class InventoryManagementDashboard extends StatefulWidget {
-  const InventoryManagementDashboard({super.key});
+  /// When set, only inventory rows for this owner’s stores are shown.
+  final int? ownerUserId;
+
+  const InventoryManagementDashboard({super.key, this.ownerUserId});
 
   @override
   State<InventoryManagementDashboard> createState() =>
@@ -26,7 +29,17 @@ class _InventoryManagementDashboardState
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final items = await _api.listInventory();
+      var items = await _api.listInventory();
+      final ownerId = widget.ownerUserId;
+      if (ownerId != null) {
+        final stores = await _api.listStores(ownerUserId: ownerId);
+        final storeIds = stores.map((s) => s.id).toSet();
+        items = items
+            .where(
+              (i) => i.storeId != null && storeIds.contains(i.storeId),
+            )
+            .toList();
+      }
       if (mounted)
         setState(() {
           _inventory = items;

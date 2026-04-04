@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'crud_suite_screen.dart';
 import 'delivery_management_dashboard.dart';
 import 'inventory_management_dashboard.dart';
 import 'menu_management_dashboard.dart';
@@ -88,14 +89,46 @@ class AdminDashboard extends StatelessWidget {
           const SliverPadding(
             padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             sliver: SliverToBoxAdapter(
-              child: Text(
-                'MANAGEMENT MODULES',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.grey,
-                  letterSpacing: 1.1,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'MANAGEMENT MODULES',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.grey,
+                      letterSpacing: 1.1,
+                    ),
+                  ),
+                  SizedBox(height: 6),
+                  Text(
+                    'All seven operational areas: restaurants, orders, delivery, menu, users, inventory, and payments.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      height: 1.35,
+                      color: Colors.black54,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            sliver: SliverToBoxAdapter(
+              child: FilledButton.tonalIcon(
+                onPressed: () {
+                  Navigator.push<void>(
+                    context,
+                    MaterialPageRoute<void>(
+                      builder: (_) => const CrudSuiteScreen(),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.grid_view_rounded),
+                label: const Text('Open seven-module CRUD suite'),
               ),
             ),
           ),

@@ -1,4 +1,39 @@
+import 'dart:convert';
+
 enum PaymentMethod { paypal, cashOnDelivery, onlineBanking }
+
+enum UserRole { customer, admin, storeOwner, deliveryDriver }
+
+extension UserRoleApi on UserRole {
+  static UserRole fromApi(String? raw) {
+    switch ((raw ?? 'CUSTOMER').toUpperCase()) {
+      case 'ADMIN':
+        return UserRole.admin;
+      case 'STORE_OWNER':
+        return UserRole.storeOwner;
+      case 'DELIVERY_DRIVER':
+        return UserRole.deliveryDriver;
+      default:
+        return UserRole.customer;
+    }
+  }
+
+  String get apiValue => switch (this) {
+        UserRole.admin => 'ADMIN',
+        UserRole.storeOwner => 'STORE_OWNER',
+        UserRole.deliveryDriver => 'DELIVERY_DRIVER',
+        UserRole.customer => 'CUSTOMER',
+      };
+}
+
+extension UserRoleDisplay on UserRole {
+  String get displayLabel => switch (this) {
+        UserRole.customer => 'Customer',
+        UserRole.admin => 'Administrator',
+        UserRole.storeOwner => 'Restaurant owner',
+        UserRole.deliveryDriver => 'Delivery driver',
+      };
+}
 
 class Payment {
   final int id;
@@ -55,12 +90,15 @@ class CartItem {
   final String name;
   final int qty;
   final double unitPrice;
+  /// Combo / special instructions — copied to order for drivers & kitchen.
+  final String? lineNote;
 
   const CartItem({
     required this.productId,
     required this.name,
     required this.qty,
     required this.unitPrice,
+    this.lineNote,
   });
 
   Map<String, Object?> toJson() => {
@@ -68,6 +106,7 @@ class CartItem {
     'name': name,
     'qty': qty,
     'unitPrice': unitPrice,
+    if (lineNote != null && lineNote!.trim().isNotEmpty) 'lineNote': lineNote,
   };
 }
 
@@ -78,6 +117,11 @@ class MenuItem {
   final String? description;
   final double price;
   final String? imageUrl;
+  /// Calendar date (local) when this item is featured as the “daily special”.
+  final DateTime? specialForDate;
+  /// Bundle / meal deal — show components to customers and drivers.
+  final bool isCombo;
+  final List<String> comboComponents;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -88,13 +132,49 @@ class MenuItem {
     this.description,
     required this.price,
     this.imageUrl,
+    this.specialForDate,
+    this.isCombo = false,
+    this.comboComponents = const [],
     this.createdAt,
     this.updatedAt,
   });
 
+  static List<String> _parseComboComponents(dynamic raw) {
+    if (raw == null) return const [];
+    if (raw is List) {
+      return raw.map((e) => e.toString().trim()).where((s) => s.isNotEmpty).toList();
+    }
+    final s = raw.toString().trim();
+    if (s.isEmpty) return const [];
+    try {
+      final decoded = jsonDecode(s);
+      if (decoded is List) {
+        return decoded
+            .map((e) => e.toString().trim())
+            .where((x) => x.isNotEmpty)
+            .toList();
+      }
+    } catch (_) {}
+    return const [];
+  }
+
+  static bool _parseBoolCombo(dynamic v) {
+    if (v == true || v == 1 || v == '1') return true;
+    return false;
+  }
+
   static MenuItem fromJson(Map<String, dynamic> json) {
     DateTime? parseDt(dynamic v) =>
         v != null ? DateTime.tryParse(v.toString()) : null;
+    DateTime? parseDateOnly(dynamic v) {
+      final d = parseDt(v);
+      if (d == null) return null;
+      return DateTime(d.year, d.month, d.day);
+    }
+
+    final combo = _parseComboComponents(json['combo_components']);
+    final isCombo = _parseBoolCombo(json['is_combo']) || combo.isNotEmpty;
+
     return MenuItem(
       id: int.tryParse('${json['id']}') ?? 0,
       storeId: int.tryParse('${json['store_id']}') ?? 0,
@@ -102,9 +182,20 @@ class MenuItem {
       description: json['description']?.toString(),
       price: double.tryParse('${json['price']}') ?? 0.0,
       imageUrl: json['image_url']?.toString(),
+      specialForDate: parseDateOnly(json['special_for_date']),
+      isCombo: isCombo,
+      comboComponents: combo,
       createdAt: parseDt(json['created_at']),
       updatedAt: parseDt(json['updated_at']),
     );
+  }
+}
+
+extension MenuItemCartNote on MenuItem {
+  /// Text stored on cart/order lines so drivers see combo contents.
+  String? get cartLineNote {
+    if (!isCombo || comboComponents.isEmpty) return null;
+    return 'Includes: ${comboComponents.join(', ')}';
   }
 }
 
@@ -211,6 +302,7 @@ class OrderItem {
   final int qty;
   final double unitPrice;
   final double lineTotal;
+  final String? lineNote;
 
   const OrderItem({
     required this.id,
@@ -220,9 +312,11 @@ class OrderItem {
     required this.qty,
     required this.unitPrice,
     required this.lineTotal,
+    this.lineNote,
   });
 
   static OrderItem fromJson(Map<String, dynamic> json) {
+    final n = json['line_note']?.toString().trim();
     return OrderItem(
       id: int.tryParse('${json['id']}') ?? 0,
       orderId: int.tryParse('${json['order_id']}') ?? 0,
@@ -231,6 +325,7 @@ class OrderItem {
       qty: int.tryParse('${json['qty']}') ?? 0,
       unitPrice: double.tryParse('${json['unit_price']}') ?? 0.0,
       lineTotal: double.tryParse('${json['line_total']}') ?? 0.0,
+      lineNote: n != null && n.isNotEmpty ? n : null,
     );
   }
 }
@@ -304,6 +399,7 @@ class User {
   final String email;
   final String? mobile;
   final String? address;
+  final UserRole role;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -313,6 +409,7 @@ class User {
     required this.email,
     this.mobile,
     this.address,
+    this.role = UserRole.customer,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -326,6 +423,11 @@ class User {
       email: json['email']?.toString() ?? '',
       mobile: json['mobile']?.toString(),
       address: json['address']?.toString(),
+      role: UserRoleApi.fromApi(
+        json['role']?.toString() ??
+            json['user_role']?.toString() ??
+            json['userRole']?.toString(),
+      ),
       createdAt: parseDt(json['created_at']),
       updatedAt: parseDt(json['updated_at']),
     );
@@ -339,6 +441,7 @@ class Store {
   final double? latitude;
   final double? longitude;
   final String? imageUrl;
+  final int? ownerUserId;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -349,6 +452,7 @@ class Store {
     this.latitude,
     this.longitude,
     this.imageUrl,
+    this.ownerUserId,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -363,6 +467,7 @@ class Store {
       latitude: double.tryParse('${json['latitude']}'),
       longitude: double.tryParse('${json['longitude']}'),
       imageUrl: json['image_url']?.toString() ?? json['imageUrl']?.toString(),
+      ownerUserId: int.tryParse(json['owner_user_id']?.toString() ?? ''),
       createdAt: parseDt(json['created_at']),
       updatedAt: parseDt(json['updated_at']),
     );
@@ -423,6 +528,7 @@ class DatabaseCartItem {
   final String name;
   final int qty;
   final double unitPrice;
+  final String? lineNote;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -433,6 +539,7 @@ class DatabaseCartItem {
     required this.name,
     required this.qty,
     required this.unitPrice,
+    this.lineNote,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -440,6 +547,7 @@ class DatabaseCartItem {
   static DatabaseCartItem fromJson(Map<String, dynamic> json) {
     DateTime? parseDt(dynamic v) =>
         DateTime.tryParse(v?.toString() ?? '');
+    final ln = json['line_note']?.toString().trim();
     return DatabaseCartItem(
       id: int.tryParse('${json['id']}') ?? 0,
       cartId: int.tryParse('${json['cart_id']}') ?? 0,
@@ -447,6 +555,7 @@ class DatabaseCartItem {
       name: json['name']?.toString() ?? '',
       qty: int.tryParse('${json['qty']}') ?? 0,
       unitPrice: double.tryParse('${json['unit_price']}') ?? 0.0,
+      lineNote: ln != null && ln.isNotEmpty ? ln : null,
       createdAt: parseDt(json['created_at']) ?? DateTime.now(),
       updatedAt: parseDt(json['updated_at']) ?? DateTime.now(),
     );
@@ -457,6 +566,7 @@ class DatabaseCartItem {
     'name': name,
     'qty': qty,
     'unit_price': unitPrice,
+    if (lineNote != null && lineNote!.trim().isNotEmpty) 'line_note': lineNote,
   };
 }
 
