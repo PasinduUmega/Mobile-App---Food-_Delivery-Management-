@@ -1,5 +1,5 @@
 /// Example Dashboard Implementations with Permission Integration
-/// 
+///
 /// This file shows best practices for implementing role-based dashboards
 /// using the RBAC permission system
 
@@ -96,9 +96,7 @@ class _RestaurantDashboardScreenState extends State<RestaurantDashboardScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Restaurant Management'),
-      ),
+      appBar: AppBar(title: const Text('Restaurant Management')),
       body: ListView(
         children: [
           // Orders - View only
@@ -127,8 +125,8 @@ class _RestaurantDashboardScreenState extends State<RestaurantDashboardScreen> {
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.miniStartTop,
       floatingActionButton: FloatingActionButton(
-        onPressed: _permissions.hasFullCrud(
-                DashboardModule.restaurantManagement)
+        onPressed:
+            _permissions.hasFullCrud(DashboardModule.restaurantManagement)
             ? () {
                 // Add new restaurant
               }
@@ -159,9 +157,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     final permissions = PermissionService();
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Admin Dashboard'),
-      ),
+      appBar: AppBar(title: const Text('Admin Dashboard')),
       drawer: _buildAdminDrawer(context, permissions),
       body: _buildAdminContent(permissions),
     );
@@ -174,9 +170,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     return Drawer(
       child: ListView(
         children: [
-          const DrawerHeader(
-            child: Text('Admin Menu'),
-          ),
+          const DrawerHeader(child: Text('Admin Menu')),
           // System Overview
           if (permissions.canRead(DashboardModule.adminDashboard))
             ListTile(
@@ -216,8 +210,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           ),
           ListTile(
             title: const Text('Restaurants (View)'),
-            enabled:
-                permissions.canRead(DashboardModule.restaurantManagement),
+            enabled: permissions.canRead(DashboardModule.restaurantManagement),
             onTap: permissions.canRead(DashboardModule.restaurantManagement)
                 ? () => setState(() => _selectedTab = 'restaurants')
                 : null,
@@ -281,9 +274,7 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('My Deliveries'),
-      ),
+      appBar: AppBar(title: const Text('My Deliveries')),
       body: ListView(
         children: [
           // Active Deliveries - Full management
@@ -438,10 +429,7 @@ class PermissionAwareList<T> extends StatelessWidget {
 class CustomerOrdersSection extends StatelessWidget {
   final PermissionService permissions;
 
-  const CustomerOrdersSection({
-    required this.permissions,
-    super.key,
-  });
+  const CustomerOrdersSection({required this.permissions, super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -458,10 +446,7 @@ class CustomerOrdersSection extends StatelessWidget {
 class CustomerCartSection extends StatelessWidget {
   final PermissionService permissions;
 
-  const CustomerCartSection({
-    required this.permissions,
-    super.key,
-  });
+  const CustomerCartSection({required this.permissions, super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -523,10 +508,7 @@ class RestaurantsSection extends StatelessWidget {
 class OrdersMonitorSection extends StatelessWidget {
   final PermissionService permissions;
 
-  const OrdersMonitorSection({
-    required this.permissions,
-    super.key,
-  });
+  const OrdersMonitorSection({required this.permissions, super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -543,10 +525,7 @@ class OrdersMonitorSection extends StatelessWidget {
 class RestaurantInfoManagementSection extends StatelessWidget {
   final PermissionService permissions;
 
-  const RestaurantInfoManagementSection({
-    required this.permissions,
-    super.key,
-  });
+  const RestaurantInfoManagementSection({required this.permissions, super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -563,10 +542,7 @@ class RestaurantInfoManagementSection extends StatelessWidget {
 class MenuManagementSection extends StatelessWidget {
   final PermissionService permissions;
 
-  const MenuManagementSection({
-    required this.permissions,
-    super.key,
-  });
+  const MenuManagementSection({required this.permissions, super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -583,10 +559,7 @@ class MenuManagementSection extends StatelessWidget {
 class InventoryManagementSection extends StatelessWidget {
   final PermissionService permissions;
 
-  const InventoryManagementSection({
-    required this.permissions,
-    super.key,
-  });
+  const InventoryManagementSection({required this.permissions, super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -635,9 +608,7 @@ class AdminOverviewTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
-      child: Text('Admin Overview'),
-    );
+    return const Center(child: Text('Admin Overview'));
   }
 }
 
@@ -646,9 +617,7 @@ class UserManagementTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
-      child: Text('User Management'),
-    );
+    return const Center(child: Text('User Management'));
   }
 }
 
@@ -657,9 +626,7 @@ class DeliveryManagementTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
-      child: Text('Delivery Management'),
-    );
+    return const Center(child: Text('Delivery Management'));
   }
 }
 
@@ -668,9 +635,7 @@ class FeedbackModerationTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
-      child: Text('Feedback Moderation'),
-    );
+    return const Center(child: Text('Feedback Moderation'));
   }
 }
 
@@ -679,9 +644,7 @@ class OrdersViewTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
-      child: Text('Orders View'),
-    );
+    return const Center(child: Text('Orders View'));
   }
 }
 
@@ -690,19 +653,14 @@ class RestaurantsViewTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
-      child: Text('Restaurants View'),
-    );
+    return const Center(child: Text('Restaurants View'));
   }
 }
 
 class ActiveDeliveriesSection extends StatelessWidget {
   final PermissionService permissions;
 
-  const ActiveDeliveriesSection({
-    required this.permissions,
-    super.key,
-  });
+  const ActiveDeliveriesSection({required this.permissions, super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -753,10 +711,7 @@ class DriverRatingsSection extends StatelessWidget {
   Widget build(BuildContext context) {
     return const Card(
       margin: EdgeInsets.all(8.0),
-      child: Padding(
-        padding: EdgeInsets.all(16.0),
-        child: Text('My Ratings'),
-      ),
+      child: Padding(padding: EdgeInsets.all(16.0), child: Text('My Ratings')),
     );
   }
 }
