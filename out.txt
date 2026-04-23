@@ -1,0 +1,7 @@
+Analyzing order_management_dashboard.dart...                    
+
+  error - The argument type 'List<Map<String, dynamic>>' can't be assigned to the parameter type 'List<CartItem>'.  - lib\ui\order_management_dashboard.dart:394:18 - argument_type_not_assignable
+   info - 'value' is deprecated and shouldn't be used. Use initialValue instead. This will set the initial value for the form field. This feature was deprecated after v3.33.0-1.0.pre - lib\ui\order_management_dashboard.dart:467:17 - deprecated_member_use
+   info - 'value' is deprecated and shouldn't be used. Use initialValue instead. This will set the initial value for the form field. This feature was deprecated after v3.33.0-1.0.pre - lib\ui\order_management_dashboard.dart:476:17 - deprecated_member_use
+   info - 'value' is deprecated and shouldn't be used. Use initialValue instead. This will set the initial value for the form field. This feature was deprecated after v3.33.0-1.0.pre - lib\ui\order_management_dashboard.dart:491:19 - deprecated_member_use
+
