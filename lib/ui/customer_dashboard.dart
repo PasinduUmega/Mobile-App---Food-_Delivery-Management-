@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../models.dart';
 import 'cart_screen.dart';
-import 'customer_ops_readonly_screen.dart';
 import 'my_orders_screen.dart';
 import 'restaurant_dashboard.dart';
 import 'user_profile_screen.dart';
@@ -41,9 +40,8 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
     final browse = RestaurantDashboard(user: widget.user);
     final cart = CartScreen(userId: widget.user.id);
     final orders = MyOrdersScreen(user: widget.user);
-    final opsReadOnly = CustomerOpsReadOnlyScreen(user: widget.user);
 
-    _screens = [browse, cart, orders, opsReadOnly, profile];
+    _screens = [browse, cart, orders, profile];
     _destinations = const [
       NavigationDestination(
         icon: Icon(Icons.home_outlined),
@@ -59,11 +57,6 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
         icon: Icon(Icons.receipt_long_outlined),
         selectedIcon: Icon(Icons.receipt_long_rounded),
         label: 'Orders',
-      ),
-      NavigationDestination(
-        icon: Icon(Icons.visibility_outlined),
-        selectedIcon: Icon(Icons.visibility),
-        label: 'View Only',
       ),
       NavigationDestination(
         icon: Icon(Icons.person_outline),

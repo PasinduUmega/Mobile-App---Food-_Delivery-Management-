@@ -394,7 +394,29 @@ class _DriverDeliveriesScreenState extends State<DriverDeliveriesScreen> {
   Future<void> _setStatus(DeliveryInfo d, String status) async {
     if (widget.readOnly) return;
     try {
-      await _api.updateDelivery(id: d.id, status: status);
+      double? currentLatitude;
+      double? currentLongitude;
+      if (status == 'OUT_FOR_DELIVERY') {
+        var order = _orderById[d.orderId];
+        order ??= await _api.getOrderDetails(id: d.orderId);
+        if (order.deliveryLatitude == null || order.deliveryLongitude == null) {
+          if (!mounted) return;
+          AppFeedback.error(
+            context,
+            'Cannot set Out for delivery: customer location is missing for this order.',
+          );
+          return;
+        }
+        currentLatitude = order.deliveryLatitude;
+        currentLongitude = order.deliveryLongitude;
+      }
+
+      await _api.updateDelivery(
+        id: d.id,
+        status: status,
+        currentLatitude: currentLatitude,
+        currentLongitude: currentLongitude,
+      );
       if (!mounted) return;
       final friendly = _statusLabelForDriver(status);
       AppFeedback.success(
