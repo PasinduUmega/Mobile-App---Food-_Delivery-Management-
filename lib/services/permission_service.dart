@@ -1,5 +1,5 @@
 /// Permission Service - Runtime permission checking and enforcement
-/// 
+///
 /// This service provides methods to check user permissions throughout the app
 /// and is used by screens to conditionally show/hide UI elements
 
@@ -83,8 +83,7 @@ class PermissionService {
 
   /// Get permission description for UI display
   String getPermissionDescription(DashboardModule module) {
-    final perm =
-        PermissionMatrix.getPermission(_currentUserRole!, module);
+    final perm = PermissionMatrix.getPermission(_currentUserRole!, module);
     if (perm == null) return 'No access';
 
     if (perm.isFullAccess) {
@@ -130,8 +129,7 @@ extension PermissionExtension on BuildContext {
   bool canCreate(DashboardModule module) =>
       PermissionService().canCreate(module);
 
-  bool canRead(DashboardModule module) =>
-      PermissionService().canRead(module);
+  bool canRead(DashboardModule module) => PermissionService().canRead(module);
 
   bool canUpdate(DashboardModule module) =>
       PermissionService().canUpdate(module);
@@ -168,9 +166,7 @@ class PermissionGate extends StatelessWidget {
       operation,
     );
 
-    return hasPermission
-        ? child
-        : (fallback ?? const SizedBox.shrink());
+    return hasPermission ? child : (fallback ?? const SizedBox.shrink());
   }
 }
 
@@ -231,9 +227,6 @@ class PermissionText extends StatelessWidget {
       operation,
     );
 
-    return Text(
-      hasPermission ? text : denialText ?? 'No access',
-      style: style,
-    );
+    return Text(hasPermission ? text : denialText ?? 'No access', style: style);
   }
 }
