@@ -39,16 +39,19 @@ class _AppShellState extends State<AppShell> {
   Future<void> _onSignIn(User user) async {
     ApiClient.sessionUserId = user.id;
     setState(() => _currentUser = user);
-    if (mounted) {
+    // Defer snackbar: subtree swaps (Auth -> Home) in the same frame.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       AppFeedback.success(context, 'Welcome back, ${user.name}!');
-    }
+    });
   }
 
   Future<void> _onSignOut() async {
     setState(() => _currentUser = null);
-    if (mounted) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       AppFeedback.success(context, 'You’re signed out. See you soon!');
-    }
+    });
   }
 
   @override

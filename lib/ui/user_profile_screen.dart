@@ -33,6 +33,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
     setState(() {
       _notificationsEnabled = prefs.getBool('notifications_enabled') ?? true;
       _darkModeEnabled = prefs.getBool('dark_mode_enabled') ?? false;
@@ -60,18 +61,21 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     setState(() => _darkModeEnabled = value);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('dark_mode_enabled', value);
+    if (!mounted) return;
 
-    // Notify parent widget about theme change
-    widget.onThemeChanged?.call(value);
-
-    if (mounted) {
+    // Rebuilding [MaterialApp] (theme) from a deep leaf replaces root [Theme]
+    // in the same stack frame; defer to avoid InheritedElement _dependents assert.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      widget.onThemeChanged?.call(value);
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(value ? 'Dark mode enabled' : 'Light mode enabled'),
           duration: const Duration(seconds: 2),
         ),
       );
-    }
+    });
   }
 
   void _confirmSignOut(BuildContext context) {

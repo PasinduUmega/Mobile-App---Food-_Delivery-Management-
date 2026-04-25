@@ -177,85 +177,80 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
     final theme = Theme.of(context);
     final orange = theme.colorScheme.primary;
 
-    return Scaffold(
-      body: Stack(
-        children: [
-          SafeArea(
-            child: AbsorbPointer(
-              absorbing: _loading,
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
-                children: [
-                  Row(
-                    children: [
-                      IconButton(
-                        onPressed: () => Navigator.of(context).maybePop(),
-                        icon: const Icon(Icons.arrow_back),
-                      ),
-                      const SizedBox(width: 4),
-                      Text('Payment', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  _orderHeader(
-                    orderId: order.orderId,
-                    amountText: '${_finalTotal.toStringAsFixed(2)} ${order.currency}',
-                    hasDiscount: _selected == PaymentOption.card,
-                    originalAmount: order.total,
-                  ),
-                  const SizedBox(height: 18),
-                  Text('Payment Method', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
-                  const SizedBox(height: 10),
-                  _optionCard(
-                    option: PaymentOption.card,
-                    selected: _selected,
-                    orange: orange,
-                    title: 'Credit / Debit Card',
-                    subtitle: 'Visa, Mastercard, AMEX',
-                    icon: Icons.credit_card_outlined,
-                    onTap: () => setState(() => _selected = PaymentOption.card),
-                  ),
-                  const SizedBox(height: 10),
-                  _optionCard(
-                    option: PaymentOption.digitalWallet,
-                    selected: _selected,
-                    orange: orange,
-                    title: 'Digital Wallet',
-                    subtitle: 'Apple Pay, Google Pay, PayPal',
-                    icon: Icons.account_balance_wallet_outlined,
-                    onTap: () => setState(() => _selected = PaymentOption.digitalWallet),
-                  ),
-                  const SizedBox(height: 10),
-                  _optionCard(
-                    option: PaymentOption.cashOnDelivery,
-                    selected: _selected,
-                    orange: orange,
-                    title: 'Cash on Delivery',
-                    subtitle: 'Pay when food arrives',
-                    icon: Icons.payments_outlined,
-                    onTap: () => setState(() => _selected = PaymentOption.cashOnDelivery),
-                  ),
-                  const SizedBox(height: 14),
-                  if (_selected == PaymentOption.card) _cardPaymentForm(orange),
-                  if (_selected == PaymentOption.digitalWallet) _digitalWalletForm(orange),
-                ],
-              ),
+    return Stack(
+      children: [
+        Scaffold(
+          resizeToAvoidBottomInset: true,
+          appBar: AppBar(
+            title: const Text('Payment'),
+            backgroundColor: theme.scaffoldBackgroundColor,
+            surfaceTintColor: Colors.transparent,
+            leading: IconButton(
+              onPressed: _loading ? null : () => Navigator.of(context).maybePop(),
+              icon: const Icon(Icons.arrow_back),
             ),
           ),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: SafeArea(
-              top: false,
-              child: Container(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-                decoration: BoxDecoration(
-                  color: theme.scaffoldBackgroundColor,
-                  boxShadow: const [
-                    BoxShadow(color: Color(0x22000000), blurRadius: 16, offset: Offset(0, -6)),
-                  ],
+          body: AbsorbPointer(
+            absorbing: _loading,
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              children: [
+                _orderHeader(
+                  orderId: order.orderId,
+                  amountText: '${_finalTotal.toStringAsFixed(2)} ${order.currency}',
+                  hasDiscount: _selected == PaymentOption.card,
+                  originalAmount: order.total,
                 ),
+                const SizedBox(height: 18),
+                Text(
+                  'Payment Method',
+                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 10),
+                _optionCard(
+                  option: PaymentOption.card,
+                  selected: _selected,
+                  orange: orange,
+                  title: 'Credit / Debit Card',
+                  subtitle: 'Visa, Mastercard, AMEX',
+                  icon: Icons.credit_card_outlined,
+                  onTap: () => setState(() => _selected = PaymentOption.card),
+                ),
+                const SizedBox(height: 10),
+                _optionCard(
+                  option: PaymentOption.digitalWallet,
+                  selected: _selected,
+                  orange: orange,
+                  title: 'Digital Wallet',
+                  subtitle: 'Apple Pay, Google Pay, PayPal',
+                  icon: Icons.account_balance_wallet_outlined,
+                  onTap: () => setState(() => _selected = PaymentOption.digitalWallet),
+                ),
+                const SizedBox(height: 10),
+                _optionCard(
+                  option: PaymentOption.cashOnDelivery,
+                  selected: _selected,
+                  orange: orange,
+                  title: 'Cash on Delivery',
+                  subtitle: 'Pay when food arrives',
+                  icon: Icons.payments_outlined,
+                  onTap: () => setState(() => _selected = PaymentOption.cashOnDelivery),
+                ),
+                const SizedBox(height: 14),
+                if (_selected == PaymentOption.card) _cardPaymentForm(orange),
+                if (_selected == PaymentOption.digitalWallet) _digitalWalletForm(orange),
+              ],
+            ),
+          ),
+          bottomNavigationBar: SafeArea(
+            top: false,
+            child: Material(
+              color: theme.scaffoldBackgroundColor,
+              elevation: 8,
+              shadowColor: const Color(0x22000000),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -268,10 +263,12 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
                         child: const Text('Pay Securely'),
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 8),
                     Text(
                       'By continuing, you agree to the payment terms and refund policy.',
-                      style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
                       textAlign: TextAlign.center,
                     ),
                   ],
@@ -279,13 +276,13 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
               ),
             ),
           ),
-          if (_loading)
-            const ColoredBox(
-              color: Color(0x66000000),
-              child: Center(child: CircularProgressIndicator()),
-            ),
-        ],
-      ),
+        ),
+        if (_loading)
+          const ColoredBox(
+            color: Color(0x66000000),
+            child: Center(child: CircularProgressIndicator()),
+          ),
+      ],
     );
   }
 
@@ -353,10 +350,11 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
   }
 
   Widget _cardPaymentForm(Color orange) {
+    final fill = Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.6);
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFFF7F7F7),
+        color: fill,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
@@ -439,41 +437,58 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
     required VoidCallback onTap,
   }) {
     final isSelected = option == selected;
-    return InkWell(
-      onTap: onTap,
+    final onVar = Theme.of(context).colorScheme.onSurfaceVariant;
+    final surface = Theme.of(context).colorScheme.surface;
+    return Material(
+      color: surface,
       borderRadius: BorderRadius.circular(16),
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: isSelected ? orange : const Color(0xFFE7E7E7), width: isSelected ? 2 : 1),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFF1EA),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, color: const Color(0xFFFF6A00)),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isSelected ? orange : const Color(0xFFE7E7E7),
+              width: isSelected ? 2 : 1,
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
-                  const SizedBox(height: 3),
-                  Text(subtitle, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
-                ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF1EA),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: const Color(0xFFFF6A00)),
               ),
-            ),
-            const SizedBox(width: 12),
-            Icon(isSelected ? Icons.radio_button_checked : Icons.radio_button_off, color: isSelected ? orange : Colors.grey),
-          ],
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 3),
+                    Text(
+                      subtitle,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: onVar, fontSize: 13),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Icon(
+                isSelected ? Icons.radio_button_checked : Icons.radio_button_off,
+                color: isSelected ? orange : Colors.grey,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -481,10 +496,11 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
 
   Widget _digitalWalletForm(Color orange) {
     final theme = Theme.of(context);
+    final fill = theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.6);
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFFF7F7F7),
+        color: fill,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
@@ -494,29 +510,30 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
           const SizedBox(height: 12),
           Text('Wallet provider', style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600)),
           const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: const Color(0xFFE7E7E7)),
-            ),
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<String>(
-                value: _walletProvider,
-                isExpanded: true,
-                items: const [
-                  DropdownMenuItem(value: 'QuickPay', child: Text('QuickPay')),
-                  DropdownMenuItem(value: 'PayPal', child: Text('PayPal')),
-                  DropdownMenuItem(value: 'Google Pay', child: Text('Google Pay')),
-                  DropdownMenuItem(value: 'Apple Pay', child: Text('Apple Pay')),
-                ],
-                onChanged: (v) {
-                  if (v == null) return;
-                  setState(() => _walletProvider = v);
-                },
+          DropdownButtonFormField<String>(
+            value: _walletProvider,
+            isExpanded: true,
+            decoration: InputDecoration(
+            filled: true,
+            fillColor: theme.colorScheme.surface,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: Color(0xFFE7E7E7)),
               ),
             ),
+            menuMaxHeight: 320,
+            itemHeight: 48,
+            items: const [
+              DropdownMenuItem(value: 'QuickPay', child: Text('QuickPay')),
+              DropdownMenuItem(value: 'PayPal', child: Text('PayPal')),
+              DropdownMenuItem(value: 'Google Pay', child: Text('Google Pay')),
+              DropdownMenuItem(value: 'Apple Pay', child: Text('Apple Pay')),
+            ],
+            onChanged: (v) {
+              if (v == null) return;
+              setState(() => _walletProvider = v);
+            },
           ),
           const SizedBox(height: 14),
           Text('Wallet ID / phone number', style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600)),

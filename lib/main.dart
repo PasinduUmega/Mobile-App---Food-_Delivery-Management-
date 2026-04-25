@@ -30,6 +30,7 @@ class _MyAppState extends State<MyApp> {
   Future<void> _loadThemePreference() async {
     print('Application: Loading theme preferences...');
     final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
     setState(() {
       _isDarkMode = prefs.getBool('dark_mode_enabled') ?? false;
       print('Application: Theme loaded (Dark Mode: $_isDarkMode).');

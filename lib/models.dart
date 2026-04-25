@@ -299,6 +299,17 @@ class CreatedOrder {
     required this.deliveryFee,
     required this.total,
   });
+
+  /// Use when re-opening payment for an existing order (e.g. from My Orders).
+  factory CreatedOrder.fromOrderSummary(OrderSummary o) {
+    return CreatedOrder(
+      orderId: o.orderId,
+      currency: o.currency,
+      subtotal: o.subtotal,
+      deliveryFee: o.deliveryFee,
+      total: o.total,
+    );
+  }
 }
 
 class OrderItem {

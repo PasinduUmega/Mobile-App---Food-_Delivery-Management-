@@ -4,6 +4,7 @@ import '../models.dart';
 import '../services/api.dart';
 import 'driver_feedback_screen.dart';
 import 'order_tracking_screen.dart';
+import 'payment_method_screen.dart';
 
 class MyOrdersScreen extends StatefulWidget {
   final User user;
@@ -117,6 +118,11 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
   }
 
   Future<void> _cancelOrder(OrderSummary order) async {
+    final s = order.status.toUpperCase();
+    if (!(s == 'PENDING_PAYMENT' || s == 'PAID')) {
+      _showSnackBar('Only pending/paid orders can be cancelled.');
+      return;
+    }
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -144,8 +150,64 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
     }
   }
 
+  Future<void> _deleteOrder(OrderSummary order) async {
+    final s = order.status.toUpperCase();
+    const deletable = {'PENDING_PAYMENT', 'CANCELLED', 'FAILED'};
+    if (!deletable.contains(s)) {
+      _showSnackBar('Only pending/cancelled/failed orders can be deleted.');
+      return;
+    }
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete order?'),
+        content: Text(
+          'Delete order #${order.orderId}? This cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('No'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await _api.deleteOrder(id: order.orderId);
+      await _load();
+      if (mounted) _showSnackBar('Order deleted.');
+    } catch (e) {
+      if (!mounted) return;
+      _showSnackBar('Failed to delete order: $e');
+    }
+  }
+
   void _showSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  /// Complete card / wallet / COD payment for an order that is still pending payment.
+  Future<void> _openPayment(OrderSummary order) async {
+    if (order.status.toUpperCase() != 'PENDING_PAYMENT') {
+      _showSnackBar('This order is not waiting for payment.');
+      return;
+    }
+    final created = CreatedOrder.fromOrderSummary(order);
+    final done = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute<bool>(
+        builder: (_) => PaymentMethodScreen(order: created),
+      ),
+    );
+    if (done == true && mounted) {
+      _showSnackBar('Payment completed.');
+      await _load();
+    }
   }
 
   Future<void> _rateDriver(OrderSummary order) async {
@@ -327,6 +389,23 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                                                   child: const Text('Cancel', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                                                 ),
                                               ),
+                                            if (['PENDING_PAYMENT', 'CANCELLED', 'FAILED'].contains(o.status.toUpperCase()))
+                                              Padding(
+                                                padding: const EdgeInsets.only(left: 8),
+                                                child: TextButton(
+                                                  onPressed: () => _deleteOrder(o),
+                                                  style: TextButton.styleFrom(
+                                                    foregroundColor: Colors.red.shade800,
+                                                    padding: EdgeInsets.zero,
+                                                    minimumSize: const Size(52, 30),
+                                                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                                  ),
+                                                  child: const Text(
+                                                    'Delete',
+                                                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                                                  ),
+                                                ),
+                                              ),
                                             const Spacer(),
                                             Text(
                                               '#${o.orderId}',
@@ -385,6 +464,23 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                                           ],
                                         ),
                                         const SizedBox(height: 8),
+                                        if (o.status.toUpperCase() == 'PENDING_PAYMENT')
+                                          Padding(
+                                            padding: const EdgeInsets.only(bottom: 10),
+                                            child: Align(
+                                              alignment: Alignment.centerLeft,
+                                              child: FilledButton.tonalIcon(
+                                                onPressed: () => _openPayment(o),
+                                                icon: const Icon(
+                                                  Icons.credit_score_rounded,
+                                                  size: 20,
+                                                ),
+                                                label: const Text(
+                                                  'Pay now (card, wallet, or COD)',
+                                                ),
+                                              ),
+                                            ),
+                                          ),
                                         if (assignedDriver != null &&
                                             assignedDriver.trim().isNotEmpty)
                                           Padding(

@@ -53,7 +53,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _onCartChanged() {
-    setState(() {});
+    if (mounted) setState(() {});
   }
 
   Future<void> _loadInitialData() async {
@@ -76,19 +76,24 @@ class _HomeScreenState extends State<HomeScreen> {
         );
       }
 
+      if (!mounted) return;
       setState(() {
         _stores = stores;
         _selectedStore = selected;
         _menuItems = menu;
       });
     } catch (e) {
-      setState(() {
-        _error = e.toString();
-      });
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+        });
+      }
     } finally {
-      setState(() {
-        _loading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _loading = false;
+        });
+      }
     }
   }
 
@@ -100,17 +105,23 @@ class _HomeScreenState extends State<HomeScreen> {
     });
     try {
       final menu = await _api.getStoreMenu(storeId: store.id);
-      setState(() {
-        _menuItems = menu;
-      });
+      if (mounted) {
+        setState(() {
+          _menuItems = menu;
+        });
+      }
     } catch (e) {
-      setState(() {
-        _error = e.toString();
-      });
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+        });
+      }
     } finally {
-      setState(() {
-        _loading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _loading = false;
+        });
+      }
     }
   }
 

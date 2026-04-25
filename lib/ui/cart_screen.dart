@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models.dart';
 import '../services/api.dart';
+import '../services/validators.dart';
 import 'payment_method_screen.dart';
 
 class CartScreen extends StatefulWidget {
@@ -54,12 +55,19 @@ class _CartScreenState extends State<CartScreen> {
       return;
     }
 
+    final qtyErr = Validators.validateCartLineQty(newQty);
+    if (qtyErr != null) {
+      _showError(qtyErr);
+      return;
+    }
+
     try {
       final updatedItems = await _api.updateCartItem(
         cartId: _cart!.id,
         itemId: item.id,
         qty: newQty,
       );
+      if (!mounted) return;
       setState(() {
         _cart = ShoppingCart(
           id: _cart!.id,
@@ -72,6 +80,7 @@ class _CartScreenState extends State<CartScreen> {
         );
       });
     } catch (e) {
+      if (!mounted) return;
       _showError(e.toString());
     }
   }
@@ -83,6 +92,7 @@ class _CartScreenState extends State<CartScreen> {
         cartId: _cart!.id,
         itemId: item.id,
       );
+      if (!mounted) return;
       setState(() {
         _cart = ShoppingCart(
           id: _cart!.id,
@@ -95,6 +105,7 @@ class _CartScreenState extends State<CartScreen> {
         );
       });
     } catch (e) {
+      if (!mounted) return;
       _showError(e.toString());
     }
   }
@@ -105,6 +116,22 @@ class _CartScreenState extends State<CartScreen> {
 
   Future<void> _checkout() async {
     if (_cart == null || _cart!.items.isEmpty) return;
+    final cartItemsForValidation = _cart!.items
+        .map(
+          (i) => CartItem(
+            productId: i.productId,
+            name: i.name,
+            qty: i.qty,
+            unitPrice: i.unitPrice,
+            lineNote: i.lineNote,
+          ),
+        )
+        .toList(growable: false);
+    final cartErr = Validators.validateCartSubtotal(cartItemsForValidation);
+    if (cartErr != null) {
+      _showError(cartErr);
+      return;
+    }
     try {
       final payNow = await showDialog<bool>(
         context: context,
@@ -112,8 +139,8 @@ class _CartScreenState extends State<CartScreen> {
           title: const Text('Checkout'),
           content: const Text(
             'Choose payment type.\n\n'
-            'Cash on delivery: pay the driver when food arrives.\n'
-            'Pay now: complete payment in the app.',
+            '• Cash on delivery: pay the driver when food arrives.\n'
+            '• Pay now: use credit/debit, digital wallet, or PayPal in the next screen.',
           ),
           actions: [
             TextButton(
