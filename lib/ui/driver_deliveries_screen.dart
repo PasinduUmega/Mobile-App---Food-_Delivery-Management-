@@ -400,15 +400,21 @@ class _DriverDeliveriesScreenState extends State<DriverDeliveriesScreen> {
         var order = _orderById[d.orderId];
         order ??= await _api.getOrderDetails(id: d.orderId);
         if (order.deliveryLatitude == null || order.deliveryLongitude == null) {
-          if (!mounted) return;
-          AppFeedback.error(
-            context,
-            'Cannot set Out for delivery: customer location is missing for this order.',
-          );
-          return;
+          final manualCoords = await _askManualLocation();
+          if (manualCoords == null) {
+            if (!mounted) return;
+            AppFeedback.error(
+              context,
+              'Cannot set Out for delivery without location.',
+            );
+            return;
+          }
+          currentLatitude = manualCoords.$1;
+          currentLongitude = manualCoords.$2;
+        } else {
+          currentLatitude = order.deliveryLatitude;
+          currentLongitude = order.deliveryLongitude;
         }
-        currentLatitude = order.deliveryLatitude;
-        currentLongitude = order.deliveryLongitude;
       }
 
       await _api.updateDelivery(
@@ -433,6 +439,72 @@ class _DriverDeliveriesScreenState extends State<DriverDeliveriesScreen> {
     } catch (e) {
       if (!mounted) return;
       AppFeedback.error(context, e.toString());
+    }
+  }
+
+  Future<(double, double)?> _askManualLocation() async {
+    final latCtrl = TextEditingController();
+    final lngCtrl = TextEditingController();
+    try {
+      return await showDialog<(double, double)>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Enter current location'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: latCtrl,
+                keyboardType: const TextInputType.numberWithOptions(
+                  signed: true,
+                  decimal: true,
+                ),
+                decoration: const InputDecoration(
+                  labelText: 'Latitude',
+                  hintText: 'e.g. 6.9271',
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: lngCtrl,
+                keyboardType: const TextInputType.numberWithOptions(
+                  signed: true,
+                  decimal: true,
+                ),
+                decoration: const InputDecoration(
+                  labelText: 'Longitude',
+                  hintText: 'e.g. 79.8612',
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () {
+                final lat = double.tryParse(latCtrl.text.trim());
+                final lng = double.tryParse(lngCtrl.text.trim());
+                if (lat == null || lng == null) {
+                  ScaffoldMessenger.of(ctx).showSnackBar(
+                    const SnackBar(
+                      content: Text('Please enter valid latitude and longitude'),
+                    ),
+                  );
+                  return;
+                }
+                Navigator.pop(ctx, (lat, lng));
+              },
+              child: const Text('Continue'),
+            ),
+          ],
+        ),
+      );
+    } finally {
+      latCtrl.dispose();
+      lngCtrl.dispose();
     }
   }
 

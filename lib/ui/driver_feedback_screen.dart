@@ -31,6 +31,19 @@ class _DriverFeedbackScreenState extends State<DriverFeedbackScreen> {
     super.dispose();
   }
 
+  Future<int?> _resolveDriverUserId() async {
+    final phone = (widget.delivery.driverPhone ?? '').trim();
+    final name = (widget.delivery.driverName ?? '').trim().toLowerCase();
+    final drivers = await _api.listDrivers(limit: 500);
+    for (final d in drivers) {
+      final dPhone = (d.phone ?? '').trim();
+      final dName = d.name.trim().toLowerCase();
+      if (phone.isNotEmpty && dPhone == phone) return d.id;
+      if (name.isNotEmpty && dName == name) return d.id;
+    }
+    return null;
+  }
+
   Future<void> _submit() async {
     if (_rating < 1 || _rating > 5) {
       ScaffoldMessenger.of(
@@ -41,8 +54,19 @@ class _DriverFeedbackScreenState extends State<DriverFeedbackScreen> {
 
     setState(() => _submitting = true);
     try {
+      final driverUserId = await _resolveDriverUserId();
+      if (driverUserId == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Could not match this delivery to a driver account'),
+            ),
+          );
+        }
+        return;
+      }
       await _api.createDriverRating(
-        driverId: widget.delivery.id,
+        driverId: driverUserId,
         orderId: widget.delivery.orderId,
         customerId: widget.customerId,
         rating: _rating,
@@ -285,11 +309,35 @@ class _DriverFeedbackDialogState extends State<DriverFeedbackDialog> {
     super.dispose();
   }
 
+  Future<int?> _resolveDriverUserId() async {
+    final phone = (widget.delivery.driverPhone ?? '').trim();
+    final name = (widget.delivery.driverName ?? '').trim().toLowerCase();
+    final drivers = await _api.listDrivers(limit: 500);
+    for (final d in drivers) {
+      final dPhone = (d.phone ?? '').trim();
+      final dName = d.name.trim().toLowerCase();
+      if (phone.isNotEmpty && dPhone == phone) return d.id;
+      if (name.isNotEmpty && dName == name) return d.id;
+    }
+    return null;
+  }
+
   Future<void> _submit() async {
     setState(() => _submitting = true);
     try {
+      final driverUserId = await _resolveDriverUserId();
+      if (driverUserId == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Could not match this delivery to a driver account'),
+            ),
+          );
+        }
+        return;
+      }
       await _api.createDriverRating(
-        driverId: widget.delivery.id,
+        driverId: driverUserId,
         orderId: widget.delivery.orderId,
         customerId: widget.customerId,
         rating: _rating,

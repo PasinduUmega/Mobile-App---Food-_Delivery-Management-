@@ -128,7 +128,12 @@ class _DriverManagementDashboardState extends State<DriverManagementDashboard> {
     final cs = Theme.of(context).colorScheme;
     final filtered = _filtered;
 
-    return Column(
+    if (_loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    return ListView(
+      padding: const EdgeInsets.only(bottom: 16),
       children: [
         Padding(
           padding: const EdgeInsets.all(16),
@@ -278,61 +283,52 @@ class _DriverManagementDashboardState extends State<DriverManagementDashboard> {
             ],
           ),
         ),
-        Expanded(
-          child: _loading
-              ? const Center(child: CircularProgressIndicator())
-              : filtered.isEmpty
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.delivery_dining_outlined,
-                          size: 54,
-                          color: cs.onSurfaceVariant,
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          _drivers.isEmpty
-                              ? 'No drivers added yet'
-                              : 'No drivers match the current filters',
-                          style: Theme.of(context).textTheme.titleMedium,
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          _drivers.isEmpty
-                              ? 'Add your first delivery driver to start assigning deliveries.'
-                              : 'Try changing status/search filters.',
-                          style: TextStyle(color: cs.onSurfaceVariant),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 16),
-                        if (_drivers.isEmpty)
-                          FilledButton.icon(
-                            onPressed: _showCreateDriver,
-                            icon: const Icon(Icons.person_add_alt_1),
-                            label: const Text('Add Driver'),
-                          ),
-                      ],
-                    ),
-                  ),
-                )
-              : ListView.builder(
-                  itemCount: filtered.length,
-                  itemBuilder: (ctx, i) {
-                    final d = filtered[i];
-                    return _DriverCard(
-                      driver: d,
-                      onEdit: () => _showEditDriver(d),
-                      onDelete: () => _deleteDriver(d),
-                      onViewMetrics: () => _showMetrics(d),
-                    );
-                  },
+        if (filtered.isEmpty)
+          Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.delivery_dining_outlined,
+                  size: 54,
+                  color: cs.onSurfaceVariant,
                 ),
-        ),
+                const SizedBox(height: 12),
+                Text(
+                  _drivers.isEmpty
+                      ? 'No drivers added yet'
+                      : 'No drivers match the current filters',
+                  style: Theme.of(context).textTheme.titleMedium,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _drivers.isEmpty
+                      ? 'Add your first delivery driver to start assigning deliveries.'
+                      : 'Try changing status/search filters.',
+                  style: TextStyle(color: cs.onSurfaceVariant),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                if (_drivers.isEmpty)
+                  FilledButton.icon(
+                    onPressed: _showCreateDriver,
+                    icon: const Icon(Icons.person_add_alt_1),
+                    label: const Text('Add Driver'),
+                  ),
+              ],
+            ),
+          )
+        else
+          ...filtered.map(
+            (d) => _DriverCard(
+              driver: d,
+              onEdit: () => _showEditDriver(d),
+              onDelete: () => _deleteDriver(d),
+              onViewMetrics: () => _showMetrics(d),
+            ),
+          ),
       ],
     );
   }

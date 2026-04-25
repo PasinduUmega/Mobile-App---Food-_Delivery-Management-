@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models.dart';
 import '../services/api.dart';
+import 'driver_feedback_screen.dart';
 import 'order_tracking_screen.dart';
 
 class MyOrdersScreen extends StatefulWidget {
@@ -145,6 +146,24 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
 
   void _showSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _rateDriver(OrderSummary order) async {
+    final delivery = _deliveryByOrderId[order.orderId];
+    if (delivery == null || (delivery.driverName ?? '').trim().isEmpty) {
+      _showSnackBar('Driver details are not available for this order yet.');
+      return;
+    }
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => DriverFeedbackDialog(
+        delivery: delivery,
+        customerId: widget.user.id,
+      ),
+    );
+    if (ok == true && mounted) {
+      _showSnackBar('Thanks! Your rating and feedback were submitted.');
+    }
   }
 
   @override
@@ -389,6 +408,20 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                                                   ),
                                                 ),
                                               ],
+                                            ),
+                                          ),
+                                        if (o.status.toUpperCase() == 'COMPLETED' &&
+                                            assignedDriver != null &&
+                                            assignedDriver.trim().isNotEmpty)
+                                          Align(
+                                            alignment: Alignment.centerLeft,
+                                            child: TextButton.icon(
+                                              onPressed: () => _rateDriver(o),
+                                              icon: const Icon(
+                                                Icons.star_rate_rounded,
+                                                size: 18,
+                                              ),
+                                              label: const Text('Rate Driver'),
                                             ),
                                           ),
                                         Text(
