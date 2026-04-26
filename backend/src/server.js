@@ -1701,15 +1701,7 @@ app.put('/api/deliveries/:id', async (req, res) => {
       }
     }
 
-    if (nextStatus === 'OUT_FOR_DELIVERY') {
-      const hasLat = currentLatitude != null && asFloat(currentLatitude) != null;
-      const hasLng = currentLongitude != null && asFloat(currentLongitude) != null;
-      if (!hasLat || !hasLng) {
-        return res.status(400).json({
-          error: 'currentLatitude and currentLongitude are required for OUT_FOR_DELIVERY',
-        });
-      }
-    }
+  
 
     const lat = currentLatitude != null ? asFloat(currentLatitude) : null;
     const lng = currentLongitude != null ? asFloat(currentLongitude) : null;

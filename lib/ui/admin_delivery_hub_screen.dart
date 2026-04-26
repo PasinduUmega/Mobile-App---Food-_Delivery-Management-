@@ -19,7 +19,7 @@ class _AdminDeliveryHubScreenState extends State<AdminDeliveryHubScreen> {
   int _selectedTab = 0;
 
   int _totalDrivers = 0;
-  int _availableDrivers = 0; // CHANGED: was _activeDrivers ("Active Now")
+  int _availableDrivers = 0;
   int _activeDeliveries = 0;
   int _unassignedOrders = 0;
   double _avgRating = 0;
@@ -94,9 +94,8 @@ class _AdminDeliveryHubScreenState extends State<AdminDeliveryHubScreen> {
       body: Column(
         children: [
           // ── Stat cards ─────────────────────────────────────────────────
-          // CHANGED: was a horizontal-scroll row of fixed 160px cards.
-          // Now a 3-column GridView that fills the full screen width.
-          // 6 cards = 2 rows × 3 columns, no scrolling needed.
+          // FIX: childAspectRatio changed from 1.55 → 1.3 to give more
+          // vertical space and prevent RenderFlex overflow.
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
             child: GridView.count(
@@ -105,7 +104,7 @@ class _AdminDeliveryHubScreenState extends State<AdminDeliveryHubScreen> {
               physics: const NeverScrollableScrollPhysics(),
               crossAxisSpacing: 8,
               mainAxisSpacing: 8,
-              childAspectRatio: 1.55,
+              childAspectRatio: 1.3, // FIX: was 1.55
               children: [
                 _StatCard(
                   label: 'Total\nDrivers',
@@ -113,9 +112,6 @@ class _AdminDeliveryHubScreenState extends State<AdminDeliveryHubScreen> {
                   icon: Icons.people,
                   color: Colors.blue,
                 ),
-                // CHANGED: "Active Now" → "Available"
-                // Available = drivers with ACTIVE status (not on a run).
-                // Drivers ON_DELIVERY are counted in "On Run" instead.
                 _StatCard(
                   label: 'Available',
                   value: '$_availableDrivers',
@@ -228,15 +224,7 @@ class _AdminDeliveryHubScreenState extends State<AdminDeliveryHubScreen> {
               children: [
                 const DriverManagementDashboard(),
                 const DriverRatingDashboard(),
-
-                // CHANGED: readOnly: true (was false)
-                // Flow: admin assigns driver → driver updates status
-                // (PENDING → PICKED_UP → OUT_FOR_DELIVERY → DELIVERED)
-                // → admin watches here in real time.
-                // Admin should NOT manually override driver status —
-                // if something's wrong, use the Assign tab to reassign.
                 const DeliveryManagementDashboard(readOnly: true),
-
                 const PaymentManagementDashboard(readOnly: true),
                 _UnassignedOrdersPanel(onAssigned: _loadStats),
               ],
@@ -249,8 +237,9 @@ class _AdminDeliveryHubScreenState extends State<AdminDeliveryHubScreen> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// _StatCard — CHANGED: no fixed width (fills grid cell).
-// Added `highlight` for "Need Driver" card (orange border + dot when > 0).
+// _StatCard
+// FIX 1: value text wrapped in FittedBox so it scales down on small screens.
+// FIX 2: label has overflow: TextOverflow.ellipsis to prevent text overflow.
 // ─────────────────────────────────────────────────────────────────────────────
 class _StatCard extends StatelessWidget {
   final String label;
@@ -297,17 +286,25 @@ class _StatCard extends StatelessWidget {
                   ),
               ],
             ),
-            Text(
-              value,
-              style: const TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w800,
-                height: 1,
+            // FIX: wrapped in FittedBox so large numbers scale down
+            // instead of overflowing the card bounds.
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  height: 1,
+                ),
               ),
             ),
+            // FIX: added overflow ellipsis so long labels don't overflow.
             Text(
               label,
               maxLines: 2,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontSize: 10.5,
                 fontWeight: FontWeight.w500,
@@ -323,7 +320,7 @@ class _StatCard extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// _UnassignedOrdersPanel — logic unchanged
+// _UnassignedOrdersPanel
 // ─────────────────────────────────────────────────────────────────────────────
 class _UnassignedOrdersPanel extends StatefulWidget {
   final VoidCallback onAssigned;
@@ -478,7 +475,7 @@ class _UnassignedOrdersPanelState extends State<_UnassignedOrdersPanel> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// _AssignDriverDialog — logic unchanged
+// _AssignDriverDialog
 // ─────────────────────────────────────────────────────────────────────────────
 class _AssignDriverDialog extends StatefulWidget {
   final OrderSummary order;
@@ -529,11 +526,12 @@ class _AssignDriverDialogState extends State<_AssignDriverDialog> {
       );
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _assigning = false;
           _error = e.toString();
         });
+      }
     }
   }
 
@@ -646,7 +644,7 @@ class _AssignDriverDialogState extends State<_AssignDriverDialog> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Unchanged: AdminDeliveryDashboard, _DriverQuickView, _RatingQuickView
+// AdminDeliveryDashboard
 // ─────────────────────────────────────────────────────────────────────────────
 class AdminDeliveryDashboard extends StatefulWidget {
   const AdminDeliveryDashboard({super.key});
@@ -670,11 +668,12 @@ class _AdminDeliveryDashboardState extends State<AdminDeliveryDashboard> {
     try {
       final drivers = await _api.listDrivers(verified: true, limit: 5);
       final ratings = await _api.listDriverRatings(limit: 10);
-      if (mounted)
+      if (mounted) {
         setState(() {
           _topDrivers = drivers;
           _recentRatings = ratings;
         });
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
