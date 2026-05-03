@@ -1,5 +1,5 @@
 /// Role-Based Access Control (RBAC) - Permission definitions for the food delivery app
-/// 
+///
 /// This file defines all permissions and operations available for each user role:
 /// - CUSTOMER: Orders, carts, payments, ratings, feedback
 /// - ADMIN: User management, delivery management, system-wide view
@@ -70,7 +70,7 @@ class ModulePermission {
 /// Permission matrix for the entire application
 class PermissionMatrix {
   static final Map<UserRole, Map<DashboardModule, ModulePermission>>
-      _permissionMatrix = {
+  _permissionMatrix = {
     // ===== CUSTOMER ROLE =====
     UserRole.customer: {
       DashboardModule.ordersAndCarts: ModulePermission(
@@ -92,8 +92,8 @@ class PermissionMatrix {
       DashboardModule.ratingAndFeedback: ModulePermission(
         module: DashboardModule.ratingAndFeedback,
         role: UserRole.customer,
-        allowedOperations: {},
-        // Rating/feedback CRUD is managed by admin in user management
+        allowedOperations: {OperationType.create, OperationType.read},
+        // Can add ratings and feedback, view their own
       ),
       DashboardModule.restaurantManagement: ModulePermission(
         module: DashboardModule.restaurantManagement,
@@ -118,7 +118,7 @@ class PermissionMatrix {
       DashboardModule.userManagement: ModulePermission(
         module: DashboardModule.userManagement,
         role: UserRole.customer,
-        allowedOperations: {},
+        allowedOperations: {OperationType.read},
       ),
       DashboardModule.adminDashboard: ModulePermission(
         module: DashboardModule.adminDashboard,
@@ -133,8 +133,8 @@ class PermissionMatrix {
       DashboardModule.ordersAndCarts: ModulePermission(
         module: DashboardModule.ordersAndCarts,
         role: UserRole.storeOwner,
-        isFullAccess: true,
-        // Full CRUD for restaurant owner orders/carts management
+        allowedOperations: {OperationType.read},
+        // View only for orders and carts
       ),
       DashboardModule.restaurantManagement: ModulePermission(
         module: DashboardModule.restaurantManagement,
@@ -174,7 +174,7 @@ class PermissionMatrix {
       DashboardModule.userManagement: ModulePermission(
         module: DashboardModule.userManagement,
         role: UserRole.storeOwner,
-        allowedOperations: {},
+        allowedOperations: {OperationType.read},
       ),
       DashboardModule.ratingAndFeedback: ModulePermission(
         module: DashboardModule.ratingAndFeedback,
@@ -201,12 +201,8 @@ class PermissionMatrix {
       DashboardModule.deliveryManagement: ModulePermission(
         module: DashboardModule.deliveryManagement,
         role: UserRole.admin,
-        allowedOperations: {
-          OperationType.read,
-          OperationType.update,
-          OperationType.manage,
-        },
-        // Delivery management access for admin dashboard
+        isFullAccess: true,
+        // Full management of delivery system
       ),
       DashboardModule.adminDashboard: ModulePermission(
         module: DashboardModule.adminDashboard,
@@ -248,13 +244,7 @@ class PermissionMatrix {
       DashboardModule.ratingAndFeedback: ModulePermission(
         module: DashboardModule.ratingAndFeedback,
         role: UserRole.admin,
-        allowedOperations: {
-          OperationType.create,
-          OperationType.read,
-          OperationType.update,
-          OperationType.delete,
-          OperationType.manage,
-        },
+        allowedOperations: {OperationType.read, OperationType.manage},
       ),
     },
 
@@ -263,12 +253,8 @@ class PermissionMatrix {
       DashboardModule.deliveryManagement: ModulePermission(
         module: DashboardModule.deliveryManagement,
         role: UserRole.deliveryDriver,
-        allowedOperations: {
-          OperationType.read,
-          OperationType.update,
-          OperationType.manage,
-        },
-        // Delivery dashboard management access for driver
+        isFullAccess: true,
+        // Full management/update of their deliveries
       ),
       DashboardModule.ordersAndCarts: ModulePermission(
         module: DashboardModule.ordersAndCarts,
@@ -344,8 +330,9 @@ class PermissionMatrix {
     if (permissions == null) return [];
 
     return permissions.entries
-        .where((e) => e.value.allowedOperations.isNotEmpty ||
-            e.value.isFullAccess)
+        .where(
+          (e) => e.value.allowedOperations.isNotEmpty || e.value.isFullAccess,
+        )
         .map((e) => e.key)
         .toList();
   }
@@ -375,43 +362,23 @@ class PermissionChecker {
   }
 
   bool canCreate(DashboardModule module) {
-    return PermissionMatrix.canPerform(
-      userRole,
-      module,
-      OperationType.create,
-    );
+    return PermissionMatrix.canPerform(userRole, module, OperationType.create);
   }
 
   bool canRead(DashboardModule module) {
-    return PermissionMatrix.canPerform(
-      userRole,
-      module,
-      OperationType.read,
-    );
+    return PermissionMatrix.canPerform(userRole, module, OperationType.read);
   }
 
   bool canUpdate(DashboardModule module) {
-    return PermissionMatrix.canPerform(
-      userRole,
-      module,
-      OperationType.update,
-    );
+    return PermissionMatrix.canPerform(userRole, module, OperationType.update);
   }
 
   bool canDelete(DashboardModule module) {
-    return PermissionMatrix.canPerform(
-      userRole,
-      module,
-      OperationType.delete,
-    );
+    return PermissionMatrix.canPerform(userRole, module, OperationType.delete);
   }
 
   bool canManage(DashboardModule module) {
-    return PermissionMatrix.canPerform(
-      userRole,
-      module,
-      OperationType.manage,
-    );
+    return PermissionMatrix.canPerform(userRole, module, OperationType.manage);
   }
 
   bool hasFullCrud(DashboardModule module) {

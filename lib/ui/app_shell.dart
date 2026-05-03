@@ -97,6 +97,7 @@ class _AppShellState extends State<AppShell> {
       user: _currentUser!,
       onSignOut: _onSignOut,
       onThemeChanged: widget.onThemeChanged,
+      onUserProfileUpdated: (u) => setState(() => _currentUser = u),
     );
   }
 }

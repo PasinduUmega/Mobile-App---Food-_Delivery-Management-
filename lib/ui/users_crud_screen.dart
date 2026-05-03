@@ -240,7 +240,7 @@ class _UserEditDialogState extends State<_UserEditDialog> {
           id: widget.existing!.id,
           name: name.trim(),
           email: email.trim(),
-          mobile: mobile.isNotEmpty ? mobile : null,
+          mobile: mobile,
           role: _selectedRole,
         );
       }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models.dart';
 import '../services/api.dart';
+import '../services/cart_manager.dart';
 import 'payment_method_screen.dart';
 import 'widgets/app_feedback.dart';
 
@@ -12,6 +13,8 @@ class PaymentDashboard extends StatefulWidget {
   final List<CartItem> cartItems;
   final double subtotal;
   final double deliveryFee;
+  /// When set, the server cart is cleared and reset after a successful order.
+  final CartManager? cartManager;
 
   const PaymentDashboard({
     super.key,
@@ -20,6 +23,7 @@ class PaymentDashboard extends StatefulWidget {
     required this.cartItems,
     required this.subtotal,
     required this.deliveryFee,
+    this.cartManager,
   });
 
   @override
@@ -48,6 +52,12 @@ class _PaymentDashboardState extends State<PaymentDashboard> {
         storeId: widget.selectedStore.id,
         deliveryFee: widget.deliveryFee,
         currency: 'LKR',
+        cartId: widget.cartManager?.cart?.id,
+      );
+
+      await widget.cartManager?.afterOrderPlaced(
+        widget.user.id,
+        widget.selectedStore.id,
       );
 
       if (!mounted) return;

@@ -230,10 +230,10 @@ class _HomeScreenState extends State<HomeScreen> {
         currency: 'LKR',
         userId: _user!.id,
         storeId: _selectedStore!.id,
+        cartId: cart.id,
       );
 
-      // Mark cart as checked out after successful order creation
-      await _cartManager.checkoutCart();
+      await _cartManager.afterOrderPlaced(_user!.id, _selectedStore!.id);
 
       if (!mounted) return;
       await Navigator.of(context).push(

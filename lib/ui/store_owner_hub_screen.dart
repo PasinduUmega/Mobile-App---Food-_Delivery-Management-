@@ -36,8 +36,9 @@ class StoreOwnerHubScreen extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Use Orders (bottom tab) for every customer basket at your stores. '
-            'Below: full CRUD for catalog and stock, then payment and delivery view.',
+            'Add multiple restaurants if you run more than one location — each has its own '
+            'menu and stock. Use Orders (bottom tab) for incoming baskets. Below: catalog, '
+            'then payments and delivery (view).',
             style: TextStyle(
               color: Colors.grey[700],
               fontSize: 12,
@@ -86,7 +87,7 @@ class StoreOwnerHubScreen extends StatelessWidget {
             icon: Icons.inventory_2_outlined,
             color: const Color(0xFFEB5757),
             title: 'Inventory (CRUD)',
-            subtitle: 'Stock / availability per item & store',
+            subtitle: 'Stock, loss alerts, retail balance sheet — all stores',
             onTap: () => Navigator.push<void>(
               context,
               MaterialPageRoute<void>(

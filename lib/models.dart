@@ -452,6 +452,41 @@ class User {
   }
 }
 
+/// Customer-submitted app / experience rating (stored on server).
+class CustomerFeedbackEntry {
+  final int id;
+  final int userId;
+  final String? userName;
+  final int rating;
+  final String feedback;
+  final String? category;
+  final DateTime createdAt;
+
+  const CustomerFeedbackEntry({
+    required this.id,
+    required this.userId,
+    this.userName,
+    required this.rating,
+    required this.feedback,
+    this.category,
+    required this.createdAt,
+  });
+
+  static CustomerFeedbackEntry fromJson(Map<String, dynamic> json) {
+    DateTime parseDt(dynamic v) =>
+        DateTime.tryParse(v?.toString() ?? '') ?? DateTime.now();
+    return CustomerFeedbackEntry(
+      id: int.tryParse('${json['id']}') ?? 0,
+      userId: int.tryParse('${json['user_id'] ?? json['userId']}') ?? 0,
+      userName: json['user_name']?.toString() ?? json['userName']?.toString(),
+      rating: int.tryParse('${json['rating']}') ?? 0,
+      feedback: json['feedback']?.toString() ?? '',
+      category: json['category']?.toString(),
+      createdAt: parseDt(json['created_at'] ?? json['createdAt']),
+    );
+  }
+}
+
 class Store {
   final int id;
   final String name;
@@ -637,6 +672,45 @@ class ShoppingCart {
   /// Get number of items in cart
   int getItemCount() {
     return items.fold(0, (sum, item) => sum + item.qty);
+  }
+}
+
+/// Server row from `GET /api/carts/audit` (admin).
+class CartAuditRow {
+  final int id;
+  final int userId;
+  final int? storeId;
+  final String status;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final DateTime? checkedOutAt;
+  final int lineCount;
+
+  const CartAuditRow({
+    required this.id,
+    required this.userId,
+    this.storeId,
+    required this.status,
+    required this.createdAt,
+    required this.updatedAt,
+    this.checkedOutAt,
+    this.lineCount = 0,
+  });
+
+  static CartAuditRow fromJson(Map<String, dynamic> json) {
+    DateTime? p(dynamic v) => DateTime.tryParse(v?.toString() ?? '');
+    return CartAuditRow(
+      id: int.tryParse('${json['id']}') ?? 0,
+      userId: int.tryParse('${json['user_id']}') ?? 0,
+      storeId: json['store_id'] == null
+          ? null
+          : int.tryParse('${json['store_id']}'),
+      status: json['status']?.toString() ?? '',
+      createdAt: p(json['created_at']) ?? DateTime.now(),
+      updatedAt: p(json['updated_at']) ?? DateTime.now(),
+      checkedOutAt: p(json['checked_out_at']),
+      lineCount: int.tryParse('${json['line_count'] ?? 0}') ?? 0,
+    );
   }
 }
 
@@ -991,4 +1065,54 @@ class Delivery {
     }
     return total / 1000; // Convert to km
   }
+}
+
+/// Customer refund request; admin updates [status] / [adminNote] only from admin UI.
+class RefundRequest {
+  final int id;
+  final int orderId;
+  final int userId;
+  final String? reason;
+  final String status;
+  final String? adminNote;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  const RefundRequest({
+    required this.id,
+    required this.orderId,
+    required this.userId,
+    this.reason,
+    required this.status,
+    this.adminNote,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+
+  static DateTime _dt(dynamic v) =>
+      DateTime.tryParse(v?.toString() ?? '') ?? DateTime.now();
+
+  factory RefundRequest.fromJson(Map<String, dynamic> json) {
+    final idVal = json['id'] ?? json['ID'];
+    final oid = json['order_id'] ?? json['orderId'];
+    final uid = json['user_id'] ?? json['userId'];
+    return RefundRequest(
+      id: int.tryParse('$idVal') ?? 0,
+      orderId: int.tryParse('$oid') ?? 0,
+      userId: int.tryParse('$uid') ?? 0,
+      reason: json['reason']?.toString(),
+      status: (json['status']?.toString() ?? 'PENDING').toUpperCase(),
+      adminNote: json['admin_note']?.toString() ?? json['adminNote']?.toString(),
+      createdAt: _dt(json['created_at'] ?? json['createdAt']),
+      updatedAt: _dt(json['updated_at'] ?? json['updatedAt']),
+    );
+  }
+
+  String get statusLabel => switch (status.toUpperCase()) {
+    'PENDING' => 'Pending review',
+    'APPROVED' => 'Approved',
+    'REJECTED' => 'Rejected',
+    'PROCESSED' => 'Processed',
+    _ => status,
+  };
 }

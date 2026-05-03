@@ -13,7 +13,7 @@ class PdfService {
     pdf.addPage(
       pw.Page(
         pageFormat: PdfPageFormat.a4,
-        build: (pw.Context context) {
+        build: (pw.Context _) {
           return pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
@@ -106,7 +106,7 @@ class PdfService {
 
     // Preview/Download
     await Printing.layoutPdf(
-      onLayout: (PdfPageFormat format) async => pdf.save(),
+      onLayout: (PdfPageFormat _) async => pdf.save(),
       name: 'receipt_order_${order.orderId}.pdf',
     );
   }
@@ -121,6 +121,148 @@ class PdfService {
           pw.Text(value),
         ],
       ),
+    );
+  }
+
+  /// Full fleet: all restaurants in the current list (e.g. owner fleet or all stores).
+  static Future<void> generateRestaurantFleetPdf({
+    required List<Store> stores,
+    String? titleSuffix,
+  }) async {
+    final pdf = pw.Document();
+    final generated = DateTime.now().toString().substring(0, 19);
+    final sub = titleSuffix != null && titleSuffix.isNotEmpty
+        ? ' — $titleSuffix'
+        : '';
+
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        build: (pw.Context _) => [
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Text(
+                    'RESTAURANT FLEET$sub',
+                    style: pw.TextStyle(
+                      fontSize: 20,
+                      fontWeight: pw.FontWeight.bold,
+                      color: PdfColors.orange800,
+                    ),
+                  ),
+                  pw.Text('Restaurant management dashboard — export', style: const pw.TextStyle(color: PdfColors.grey700, fontSize: 10)),
+                ],
+              ),
+              pw.Text('Generated: $generated', style: const pw.TextStyle(fontSize: 9)),
+            ],
+          ),
+          pw.SizedBox(height: 8),
+          pw.Text('Total locations: ${stores.length}', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
+          pw.SizedBox(height: 12),
+          if (stores.isEmpty)
+            pw.Text('No restaurants in this list.')
+          else
+            pw.TableHelper.fromTextArray(
+              headerStyle: pw.TextStyle(
+                fontWeight: pw.FontWeight.bold,
+                color: PdfColors.white,
+              ),
+              headerDecoration: const pw.BoxDecoration(color: PdfColors.orange800),
+              cellHeight: 28,
+              cellAlignments: {
+                0: pw.Alignment.center,
+                1: pw.Alignment.centerLeft,
+                2: pw.Alignment.centerLeft,
+                3: pw.Alignment.center,
+              },
+              headers: const ['ID', 'Name', 'Address', 'Updated'],
+              data: stores.map((s) {
+                return [
+                  s.id.toString(),
+                  s.name,
+                  s.address?.trim().isNotEmpty == true ? s.address! : '—',
+                  s.updatedAt.toString().substring(0, 16),
+                ];
+              }).toList(),
+            ),
+          pw.SizedBox(height: 20),
+          pw.Text(
+            'Per-location photos and ratings are in the app only.',
+            style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey600),
+          ),
+        ],
+      ),
+    );
+
+    final safe = generated.replaceAll(RegExp(r'[^\w\-]'), '_');
+    await Printing.layoutPdf(
+      onLayout: (PdfPageFormat _) async => pdf.save(),
+      name: 'restaurant_fleet_$safe.pdf',
+    );
+  }
+
+  /// One restaurant: detail sheet for download / print.
+  static Future<void> generateStoreDetailsPdf(Store s) async {
+    final pdf = pw.Document();
+    final generated = DateTime.now().toString().substring(0, 19);
+
+    String d(String? v) =>
+        (v != null && v.trim().isNotEmpty) ? v : '—';
+
+    pdf.addPage(
+      pw.Page(
+        pageFormat: PdfPageFormat.a4,
+        build: (pw.Context _) {
+          return pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Text(
+                'RESTAURANT DETAILS',
+                style: pw.TextStyle(
+                  fontSize: 22,
+                  fontWeight: pw.FontWeight.bold,
+                  color: PdfColors.orange800,
+                ),
+              ),
+              pw.SizedBox(height: 4),
+              pw.Text('ID #${s.id} · $generated', style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey700)),
+              pw.SizedBox(height: 20),
+              pw.Text(s.name, style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+              pw.SizedBox(height: 16),
+              _buildSummaryRow('Address', d(s.address)),
+              _buildSummaryRow(
+                'Coordinates',
+                s.latitude != null && s.longitude != null
+                    ? '${s.latitude}, ${s.longitude}'
+                    : '—',
+              ),
+              if (s.ownerUserId != null) _buildSummaryRow('Owner user ID', s.ownerUserId.toString()),
+              _buildSummaryRow('Created', s.createdAt.toString().substring(0, 16)),
+              _buildSummaryRow('Updated', s.updatedAt.toString().substring(0, 16)),
+              if (s.imageUrl != null && s.imageUrl!.isNotEmpty)
+                _buildSummaryRow('Image URL', s.imageUrl!),
+              pw.SizedBox(height: 24),
+              pw.Text(
+                'Use the Menu action in the app to see dishes and prices.',
+                style: const pw.TextStyle(
+                  color: PdfColors.grey600,
+                  fontSize: 9,
+                  fontStyle: pw.FontStyle.italic,
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+
+    final safe = s.name.replaceAll(RegExp(r'[^\w\-\s]'), '').trim().replaceAll(RegExp(r'\s+'), '_');
+    await Printing.layoutPdf(
+      onLayout: (PdfPageFormat _) async => pdf.save(),
+      name: 'restaurant_${s.id}_$safe.pdf',
     );
   }
 }

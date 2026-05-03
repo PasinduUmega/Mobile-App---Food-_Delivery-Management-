@@ -4,21 +4,9 @@ Food Rush (Flutter) + Payments (PayPal/COD/Online Banking demo).
 
 ## Getting Started
 
-### Backend (MySQL + PayPal)
+### Backend (MongoDB + Express)
 
-- **1) Create / use your MySQL schema**: `food_rush`
-- **2) Apply tables**:
-
-```bash
-mysql -u root -p food_rush < backend/sql/food_rush_payments.sql
-```
-
-- **3) Configure backend env**:
-  - Copy `backend/.env.example` → `backend/.env`
-  - Set `MYSQL_*`
-  - Set PayPal sandbox credentials: `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`
-
-- **4) Run backend**:
+See [`backend/README.md`](backend/README.md) for environment variables, MongoDB, and PayPal setup.
 
 ```bash
 cd backend
@@ -26,7 +14,10 @@ npm install
 npm run dev
 ```
 
-Backend default: `http://localhost:8080`
+### Web & React Native (optional)
+
+- **Web (Vite):** `frontend/` — `npm install` / `npm run dev` (proxies API in dev).
+- **React Native:** `frontend/native/` — same REST API as Flutter; set `src/config.js` for device vs emulator. See [`frontend/README.md`](frontend/README.md).
 
 ### Flutter app
 

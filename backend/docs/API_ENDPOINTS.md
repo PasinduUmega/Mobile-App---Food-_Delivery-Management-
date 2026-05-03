@@ -1,0 +1,138 @@
+# Food Rush API — endpoint tables (seven components)
+
+Base URL examples: `http://localhost:8080` · Android emulator → `http://10.0.2.2:8080`.
+
+Many routes expect signed-in identity via header **`X-User-Id: <numeric user id>`** (Flutter / mobile clients).
+
+---
+
+## 1. Infrastructure
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/health` | MongoDB ping; returns `{ ok: true }` or 500 |
+
+---
+
+## 2. Identity & authentication
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/auth/signup` | Register (`name`, `email`, `password`, optional `role`, `mobile`, `address`) |
+| POST | `/api/auth/signin` | Login (`email`, `password`); returns user JSON (no password hash) |
+
+---
+
+## 3. Users & administrators
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/users` | List all users |
+| POST | `/api/users` | Create user (random password placeholder) |
+| GET | `/api/users/:userId/orders` | Orders for user (`limit`, `offset`, `status` query optional) |
+| GET | `/api/users/:id` | Get user by id |
+| PUT | `/api/users/:id` | Update profile; **`X-User-Id`** self or admin; admin can change `role` |
+| DELETE | `/api/users/:id` | Delete user |
+
+---
+
+## 4. Stores, menu & inventory (catalog)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/stores` | List stores (`ownerUserId` query optional) |
+| POST | `/api/stores` | Create store |
+| GET | `/api/stores/:id/menu` | Menu items for store |
+| GET | `/api/stores/:storeId/orders` | Orders for store |
+| GET | `/api/stores/:id` | Store by id |
+| PUT | `/api/stores/:id` | Update store |
+| DELETE | `/api/stores/:id` | Delete store (+ menu rows + inventory) |
+| POST | `/api/menu_items` | Create menu item (+ inventory row) |
+| PUT | `/api/menu_items/:id` | Update menu item |
+| DELETE | `/api/menu_items/:id` | Delete menu item (+ inventory) |
+| GET | `/api/inventory` | List inventory rows (`storeId` filter optional) |
+| POST | `/api/inventory` | Upsert by `menuItemId` |
+| PUT | `/api/inventory/:id` | Set `quantity` |
+| DELETE | `/api/inventory/:id` | Delete inventory row |
+
+---
+
+## 5. Shopping carts
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/carts/audit` | Cart headers + line counts — **admin only** (`X-User-Id` admin) |
+| GET | `/api/carts/user/:userId` | Active cart for user (+ items) |
+| POST | `/api/carts` | Create-or-get active cart (`userId`, optional `storeId`) |
+| POST | `/api/carts/:cartId/checkout` | Mark cart CHECKED_OUT |
+| DELETE | `/api/carts/:cartId` | Mark cart ABANDONED (keeps line snapshot) |
+| POST | `/api/carts/:cartId/items` | Add line (`productId`, `name`, `qty`, `unitPrice`, optional `lineNote`) |
+| PUT | `/api/carts/:cartId/items/:itemId` | Set line `qty` (0 deletes line) |
+| DELETE | `/api/carts/:cartId/items/:itemId` | Remove line |
+
+---
+
+## 6. Orders, refunds, payments & receipts
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/orders` | Create order (`items`, `storeId`, `currency`, `deliveryFee`, …; optional `cartId` cleanup) |
+| GET | `/api/orders` | List (`userId`, `storeId`, `status`, `limit`, `offset`) |
+| GET | `/api/orders/:id` | Order + lines |
+| PUT | `/api/orders/:id` | Update `status` and/or replace `items` |
+| DELETE | `/api/orders/:id` | Delete (blocked for some paid/active statuses) |
+| POST | `/api/refund-requests` | Customer refund request (**`X-User-Id`**) |
+| GET | `/api/refund-requests` | List: admin all; customer `?userId=` must match header |
+| PATCH | `/api/refund-requests/:id` | Admin update status/note |
+| POST | `/api/payments/paypal/create` | Start PayPal Checkout (`orderId`) |
+| POST | `/api/payments/paypal/capture` | Capture after approval (`orderId`) |
+| POST | `/api/payments/cod/confirm` | COD confirm (`orderId`) |
+| POST | `/api/payments/online-banking/confirm` | Bank demo (`orderId`, optional `reference`) |
+| GET | `/api/payments/paypal/return` | Browser return (plain text) |
+| GET | `/api/payments/paypal/cancel` | Browser cancel (plain text) |
+| GET | `/api/payments` | List payments (filters: `orderId`, `method`, `status`) |
+| GET | `/api/payments/:id` | Payment by id |
+| POST | `/api/payments` | Create payment row |
+| PUT | `/api/payments/:id` | Patch payment (`CAPTURED` syncs order + receipt) |
+| DELETE | `/api/payments/:id` | Delete payment (+ linked receipts cleanup) |
+| GET | `/api/receipts/:orderId` | Receipt payload for Flutter polling |
+
+---
+
+## 7. Delivery, drivers & customer feedback
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/deliveries` | List deliveries |
+| POST | `/api/deliveries` | Create delivery (`orderId`, optional driver fields); unique per order |
+| PUT | `/api/deliveries/:id` | Update status/driver/location (`OUT_FOR_DELIVERY` needs coords) |
+| DELETE | `/api/deliveries/:id` | Delete delivery row |
+| GET | `/api/drivers` | List drivers (`status`, `verified`, `limit`, `offset`) |
+| POST | `/api/drivers` | Upsert driver profile |
+| GET | `/api/drivers/metrics/leaderboard` | Leaderboard |
+| GET | `/api/drivers/:driverId/metrics` | Per-driver metrics |
+| GET | `/api/drivers/:id` | Driver detail |
+| PUT | `/api/drivers/:id` | Update driver |
+| DELETE | `/api/drivers/:id` | Strip driver role + profile |
+| GET | `/api/driver-ratings` | List ratings (`driverId`, `orderId`, pagination) |
+| POST | `/api/driver-ratings` | Create rating |
+| PUT | `/api/driver-ratings/:id` | Update rating |
+| POST | `/api/customer-feedback` | Submit rating/feedback (**`X-User-Id`**) |
+| GET | `/api/customer-feedback/me` | Own entries (**`X-User-Id`**) |
+| GET | `/api/customer-feedback` | All entries (**admin** + **`X-User-Id`**) |
+
+---
+
+### Quick counts
+
+| # | Component | Route groups |
+|---|-----------|----------------|
+| 1 | Infrastructure | health |
+| 2 | Authentication | `/api/auth` |
+| 3 | Users | `/api/users` |
+| 4 | Catalog | `/api/stores`, `/api/menu_items`, `/api/inventory` |
+| 5 | Carts | `/api/carts` |
+| 6 | Orders & money | `/api/orders`, `/api/refund-requests`, `/api/payments`, `/api/receipts` |
+| 7 | Delivery & feedback | `/api/deliveries`, `/api/drivers`, `/api/driver-ratings`, `/api/customer-feedback` |
+
+For MongoDB indexes and collection names see `src/config/mongo.js`.

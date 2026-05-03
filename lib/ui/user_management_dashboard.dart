@@ -2,44 +2,7 @@ import 'package:flutter/material.dart';
 import '../models.dart';
 import '../services/api.dart';
 import '../services/validators.dart';
-
-class _UserRatingFeedbackRecord {
-  final int id;
-  final int userId;
-  final String userName;
-  final int rating;
-  final String feedback;
-  final String integrationArea;
-  final DateTime createdAt;
-
-  const _UserRatingFeedbackRecord({
-    required this.id,
-    required this.userId,
-    required this.userName,
-    required this.rating,
-    required this.feedback,
-    required this.integrationArea,
-    required this.createdAt,
-  });
-
-  _UserRatingFeedbackRecord copyWith({
-    int? userId,
-    String? userName,
-    int? rating,
-    String? feedback,
-    String? integrationArea,
-  }) {
-    return _UserRatingFeedbackRecord(
-      id: id,
-      userId: userId ?? this.userId,
-      userName: userName ?? this.userName,
-      rating: rating ?? this.rating,
-      feedback: feedback ?? this.feedback,
-      integrationArea: integrationArea ?? this.integrationArea,
-      createdAt: createdAt,
-    );
-  }
-}
+import 'users_crud_screen.dart';
 
 class UserManagementDashboard extends StatefulWidget {
   const UserManagementDashboard({super.key});
@@ -54,8 +17,7 @@ class _UserManagementDashboardState extends State<UserManagementDashboard> {
   bool _loading = false;
   List<User> _items = const [];
   String _searchQuery = '';
-  int _nextFeedbackId = 1;
-  List<_UserRatingFeedbackRecord> _ratingFeedback = const [];
+  List<CustomerFeedbackEntry> _customerFeedback = const [];
 
   @override
   void initState() {
@@ -75,15 +37,20 @@ class _UserManagementDashboardState extends State<UserManagementDashboard> {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text(e.toString())));
+    }
+    try {
+      final feedback = await _api.listCustomerFeedbackAdmin();
+      if (mounted) setState(() => _customerFeedback = feedback);
+    } catch (e) {
+      if (mounted) {
+        setState(() => _customerFeedback = const []);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Feedback list: ${e.toString()}')),
+        );
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
-  }
-
-  Future<void> _create() async {
-    final created = await _showEditDialog();
-    if (created == null) return;
-    await _reload();
   }
 
   Future<void> _edit(User u) async {
@@ -143,76 +110,10 @@ class _UserManagementDashboardState extends State<UserManagementDashboard> {
         .toList();
   }
 
-  double _averageRating() {
-    if (_ratingFeedback.isEmpty) return 0;
-    final total = _ratingFeedback.fold<int>(0, (s, e) => s + e.rating);
-    return total / _ratingFeedback.length;
-  }
-
-  Future<void> _addRatingFeedback() async {
-    if (_items.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Create users before adding feedback.')),
-      );
-      return;
-    }
-    final created = await showDialog<_UserRatingFeedbackRecord>(
-      context: context,
-      builder: (_) => _RatingFeedbackDialog(
-        users: _items,
-        nextId: _nextFeedbackId,
-      ),
-    );
-    if (created == null) return;
-    setState(() {
-      _ratingFeedback = [created, ..._ratingFeedback];
-      _nextFeedbackId += 1;
-    });
-  }
-
-  Future<void> _editRatingFeedback(_UserRatingFeedbackRecord item) async {
-    final edited = await showDialog<_UserRatingFeedbackRecord>(
-      context: context,
-      builder: (_) => _RatingFeedbackDialog(
-        users: _items,
-        nextId: item.id,
-        existing: item,
-      ),
-    );
-    if (edited == null) return;
-    setState(() {
-      _ratingFeedback = _ratingFeedback
-          .map((e) => e.id == item.id ? edited : e)
-          .toList(growable: false);
-    });
-  }
-
-  Future<void> _deleteRatingFeedback(_UserRatingFeedbackRecord item) async {
-    final yes = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Delete feedback?'),
-        content: Text(
-          'Remove rating #${item.id} for ${item.userName}?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-    if (yes != true) return;
-    setState(() {
-      _ratingFeedback = _ratingFeedback
-          .where((e) => e.id != item.id)
-          .toList(growable: false);
-    });
+  double _averageCustomerRating() {
+    if (_customerFeedback.isEmpty) return 0;
+    final total = _customerFeedback.fold<int>(0, (s, e) => s + e.rating);
+    return total / _customerFeedback.length;
   }
 
   @override
@@ -225,13 +126,6 @@ class _UserManagementDashboardState extends State<UserManagementDashboard> {
         actions: [
           IconButton(onPressed: _reload, icon: const Icon(Icons.refresh)),
         ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _create,
-        backgroundColor: const Color(0xFFFF6A00),
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.person_add_alt_1),
-        label: const Text('Invite User'),
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
@@ -264,6 +158,47 @@ class _UserManagementDashboardState extends State<UserManagementDashboard> {
                           ),
                         ),
                       ],
+                    ),
+                  ),
+                ),
+
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                    child: Material(
+                      color: const Color(0xFFFFF4EB),
+                      borderRadius: BorderRadius.circular(14),
+                      child: InkWell(
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute<void>(
+                            builder: (_) => const UsersCrudScreen(),
+                          ),
+                        ),
+                        borderRadius: BorderRadius.circular(14),
+                        child: Padding(
+                          padding: const EdgeInsets.all(14),
+                          child: Row(
+                            children: const [
+                              Icon(
+                                Icons.person_add_alt_1,
+                                color: Color(0xFFFF6A00),
+                              ),
+                              SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  'Add or invite users in Users (CRUD). Tap to open.',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                              Icon(Icons.chevron_right, color: Colors.grey),
+                            ],
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -367,7 +302,7 @@ class _UserManagementDashboardState extends State<UserManagementDashboard> {
                         Expanded(
                           child: _buildStatCard(
                             'Ratings',
-                            _ratingFeedback.length.toString(),
+                            _customerFeedback.length.toString(),
                             Icons.star_rate_outlined,
                             const Color(0xFFF2994A),
                           ),
@@ -376,7 +311,7 @@ class _UserManagementDashboardState extends State<UserManagementDashboard> {
                         Expanded(
                           child: _buildStatCard(
                             'Avg Score',
-                            _averageRating().toStringAsFixed(1),
+                            _averageCustomerRating().toStringAsFixed(1),
                             Icons.reviews_outlined,
                             const Color(0xFF4A90E2),
                           ),
@@ -389,7 +324,7 @@ class _UserManagementDashboardState extends State<UserManagementDashboard> {
                   padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
                   sliver: SliverToBoxAdapter(
                     child: Text(
-                      'USER RATING & FEEDBACK CRUD',
+                      'CUSTOMER RATINGS & FEEDBACK',
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w800,
@@ -399,69 +334,49 @@ class _UserManagementDashboardState extends State<UserManagementDashboard> {
                     ),
                   ),
                 ),
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: FilledButton.icon(
-                      onPressed: _addRatingFeedback,
-                      icon: const Icon(Icons.rate_review_outlined),
-                      label: const Text('Add rating / feedback'),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: const Color(0xFF4A90E2),
-                      ),
-                    ),
-                  ),
-                ),
                 SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                  sliver: _ratingFeedback.isEmpty
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+                  sliver: _customerFeedback.isEmpty
                       ? const SliverToBoxAdapter(
                           child: Text(
-                            'No rating entries yet. Add customer feedback for '
-                            'payments, integrations, carts or UX quality.',
+                            'No submissions yet. Customers can send ratings from '
+                            'Account → Rating & feedback in the app.',
                           ),
                         )
                       : SliverList(
                           delegate: SliverChildBuilderDelegate(
                             (ctx, i) {
-                              final rf = _ratingFeedback[i];
+                              final rf = _customerFeedback[i];
+                              final who = rf.userName ?? 'User #${rf.userId}';
+                              final cat = rf.category ?? 'General';
+                              final date =
+                                  '${rf.createdAt.year}-${rf.createdAt.month.toString().padLeft(2, '0')}-${rf.createdAt.day.toString().padLeft(2, '0')}';
                               return Card(
                                 margin: const EdgeInsets.only(bottom: 10),
                                 child: ListTile(
                                   title: Text(
-                                    '${rf.userName} • ${rf.rating}/5',
+                                    '$who • ${rf.rating}/5 · $cat',
                                     style: const TextStyle(
                                       fontWeight: FontWeight.w700,
                                     ),
                                   ),
                                   subtitle: Text(
-                                    '${rf.integrationArea}\n${rf.feedback}',
-                                    maxLines: 3,
+                                    rf.feedback,
+                                    maxLines: 4,
                                     overflow: TextOverflow.ellipsis,
                                   ),
-                                  isThreeLine: true,
-                                  trailing: PopupMenuButton<String>(
-                                    onSelected: (v) {
-                                      if (v == 'edit') _editRatingFeedback(rf);
-                                      if (v == 'delete') {
-                                        _deleteRatingFeedback(rf);
-                                      }
-                                    },
-                                    itemBuilder: (_) => const [
-                                      PopupMenuItem(
-                                        value: 'edit',
-                                        child: Text('Edit'),
-                                      ),
-                                      PopupMenuItem(
-                                        value: 'delete',
-                                        child: Text('Delete'),
-                                      ),
-                                    ],
+                                  isThreeLine: rf.feedback.length > 60,
+                                  trailing: Text(
+                                    date,
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.grey[600],
+                                    ),
                                   ),
                                 ),
                               );
                             },
-                            childCount: _ratingFeedback.length,
+                            childCount: _customerFeedback.length,
                           ),
                         ),
                 ),
@@ -652,177 +567,6 @@ class _UserManagementDashboardState extends State<UserManagementDashboard> {
   }
 }
 
-class _RatingFeedbackDialog extends StatefulWidget {
-  final List<User> users;
-  final int nextId;
-  final _UserRatingFeedbackRecord? existing;
-
-  const _RatingFeedbackDialog({
-    required this.users,
-    required this.nextId,
-    this.existing,
-  });
-
-  @override
-  State<_RatingFeedbackDialog> createState() => _RatingFeedbackDialogState();
-}
-
-class _RatingFeedbackDialogState extends State<_RatingFeedbackDialog> {
-  late int _selectedUserId;
-  late int _rating;
-  late String _integrationArea;
-  late final TextEditingController _feedbackCtrl;
-
-  @override
-  void initState() {
-    super.initState();
-    _selectedUserId =
-        widget.existing?.userId ??
-        (widget.users.isNotEmpty ? widget.users.first.id : 0);
-    _rating = widget.existing?.rating ?? 5;
-    _integrationArea = widget.existing?.integrationArea ?? 'Payment';
-    _feedbackCtrl = TextEditingController(text: widget.existing?.feedback ?? '');
-  }
-
-  @override
-  void dispose() {
-    _feedbackCtrl.dispose();
-    super.dispose();
-  }
-
-  void _save() {
-    final feedback = _feedbackCtrl.text.trim();
-    if (feedback.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Feedback text is required.')),
-      );
-      return;
-    }
-    final user = widget.users.firstWhere(
-      (u) => u.id == _selectedUserId,
-      orElse: () => widget.users.first,
-    );
-    Navigator.pop(
-      context,
-      _UserRatingFeedbackRecord(
-        id: widget.existing?.id ?? widget.nextId,
-        userId: user.id,
-        userName: user.name,
-        rating: _rating,
-        feedback: feedback,
-        integrationArea: _integrationArea,
-        createdAt: widget.existing?.createdAt ?? DateTime.now(),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              widget.existing == null
-                  ? 'Create Rating & Feedback'
-                  : 'Edit Rating & Feedback',
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 14),
-            DropdownButtonFormField<int>(
-              value: _selectedUserId,
-              decoration: const InputDecoration(
-                labelText: 'User',
-                prefixIcon: Icon(Icons.person_outline),
-              ),
-              items: widget.users
-                  .map(
-                    (u) => DropdownMenuItem<int>(
-                      value: u.id,
-                      child: Text(u.name),
-                    ),
-                  )
-                  .toList(growable: false),
-              onChanged: (v) {
-                if (v != null) setState(() => _selectedUserId = v);
-              },
-            ),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
-              value: _integrationArea,
-              decoration: const InputDecoration(
-                labelText: 'Area',
-                prefixIcon: Icon(Icons.integration_instructions_outlined),
-              ),
-              items: const [
-                DropdownMenuItem(value: 'Payment', child: Text('Payment')),
-                DropdownMenuItem(
-                  value: 'Integration',
-                  child: Text('Integration'),
-                ),
-                DropdownMenuItem(value: 'Cart', child: Text('Cart')),
-                DropdownMenuItem(value: 'Customer UX', child: Text('Customer UX')),
-              ],
-              onChanged: (v) {
-                if (v != null) setState(() => _integrationArea = v);
-              },
-            ),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<int>(
-              value: _rating,
-              decoration: const InputDecoration(
-                labelText: 'Rating',
-                prefixIcon: Icon(Icons.star_outline),
-              ),
-              items: const [
-                DropdownMenuItem(value: 1, child: Text('1 - Very poor')),
-                DropdownMenuItem(value: 2, child: Text('2 - Poor')),
-                DropdownMenuItem(value: 3, child: Text('3 - Average')),
-                DropdownMenuItem(value: 4, child: Text('4 - Good')),
-                DropdownMenuItem(value: 5, child: Text('5 - Excellent')),
-              ],
-              onChanged: (v) {
-                if (v != null) setState(() => _rating = v);
-              },
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _feedbackCtrl,
-              maxLines: 4,
-              decoration: const InputDecoration(
-                labelText: 'Feedback',
-                prefixIcon: Icon(Icons.feedback_outlined),
-              ),
-            ),
-            const SizedBox(height: 18),
-            Row(
-              children: [
-                Expanded(
-                  child: TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('Cancel'),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: FilledButton(
-                    onPressed: _save,
-                    child: const Text('Save'),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _UserEditDialog extends StatefulWidget {
   final User? existing;
   final ApiClient api;
@@ -897,7 +641,7 @@ class _UserEditDialogState extends State<_UserEditDialog> {
           id: widget.existing!.id,
           name: nameText,
           email: emailText,
-          mobile: mobileText.isEmpty ? null : mobileText,
+          mobile: mobileText,
           role: _selectedRole,
         );
       }

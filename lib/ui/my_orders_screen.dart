@@ -21,6 +21,8 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
   List<OrderSummary> _orders = [];
   Map<int, DeliveryInfo> _deliveryByOrderId = {};
   final Set<int> _seenAssignedOrders = <int>{};
+  /// Latest refund request per order (by highest id).
+  Map<int, RefundRequest> _refundByOrderId = {};
 
   @override
   void initState() {
@@ -46,6 +48,15 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
       final nextDeliveryMap = <int, DeliveryInfo>{
         for (final d in myDeliveries) d.orderId: d,
       };
+      List<RefundRequest> refundRows = const [];
+      try {
+        refundRows = await _api.listRefundRequests(userId: widget.user.id);
+      } catch (_) {}
+      final nextRefundMap = <int, RefundRequest>{};
+      for (final r in refundRows) {
+        final prev = nextRefundMap[r.orderId];
+        if (prev == null || r.id > prev.id) nextRefundMap[r.orderId] = r;
+      }
       final newlyAssigned = myDeliveries.where((d) {
         final hasDriver = (d.driverName ?? '').trim().isNotEmpty;
         return hasDriver && !_seenAssignedOrders.contains(d.orderId);
@@ -53,6 +64,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
       setState(() {
         _orders = mine;
         _deliveryByOrderId = nextDeliveryMap;
+        _refundByOrderId = nextRefundMap;
         for (final d in myDeliveries) {
           final hasDriver = (d.driverName ?? '').trim().isNotEmpty;
           if (hasDriver) _seenAssignedOrders.add(d.orderId);
@@ -192,6 +204,69 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
   }
 
   /// Complete card / wallet / COD payment for an order that is still pending payment.
+  static const _refundEligible = {'PAID', 'PREPARING', 'READY', 'COMPLETED'};
+
+  bool _orderEligibleForRefund(OrderSummary o) =>
+      _refundEligible.contains(o.status.toUpperCase());
+
+  RefundRequest? _refundFor(int orderId) => _refundByOrderId[orderId];
+
+  bool _canRequestRefundButton(OrderSummary o) {
+    if (!_orderEligibleForRefund(o)) return false;
+    final r = _refundFor(o.orderId);
+    if (r == null) return true;
+    return r.status.toUpperCase() == 'REJECTED';
+  }
+
+  Future<void> _requestRefund(OrderSummary o) async {
+    final textCtrl = TextEditingController();
+    final submit = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Request a refund'),
+        content: SingleChildScrollView(
+          child: TextField(
+            controller: textCtrl,
+            maxLines: 4,
+            decoration: const InputDecoration(
+              labelText: 'Reason (optional)',
+              hintText: 'Describe the issue. Admin reviews this in the dashboard.',
+              border: OutlineInputBorder(),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Submit'),
+          ),
+        ],
+      ),
+    );
+    if (submit != true) {
+      textCtrl.dispose();
+      return;
+    }
+    try {
+      await _api.createRefundRequest(
+        orderId: o.orderId,
+        reason: textCtrl.text.trim().isEmpty ? null : textCtrl.text,
+      );
+      if (mounted) {
+        _showSnackBar('Refund request sent. You’ll see status here; admin will review.');
+        await _load();
+      }
+    } catch (e) {
+      if (mounted) _showSnackBar(e.toString());
+    } finally {
+      textCtrl.dispose();
+    }
+  }
+
   Future<void> _openPayment(OrderSummary order) async {
     if (order.status.toUpperCase() != 'PENDING_PAYMENT') {
       _showSnackBar('This order is not waiting for payment.');
@@ -478,6 +553,42 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                                                 label: const Text(
                                                   'Pay now (card, wallet, or COD)',
                                                 ),
+                                              ),
+                                            ),
+                                          ),
+                                        if (_refundFor(o.orderId) != null)
+                                          Padding(
+                                            padding: const EdgeInsets.only(bottom: 6),
+                                            child: Row(
+                                              children: [
+                                                Icon(
+                                                  Icons.undo,
+                                                  size: 16,
+                                                  color: cs.tertiary,
+                                                ),
+                                                const SizedBox(width: 6),
+                                                Expanded(
+                                                  child: Text(
+                                                    'Refund: ${_refundFor(o.orderId)!.statusLabel}',
+                                                    style: TextStyle(
+                                                      fontSize: 12,
+                                                      fontWeight: FontWeight.w600,
+                                                      color: cs.tertiary,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        if (_canRequestRefundButton(o))
+                                          Padding(
+                                            padding: const EdgeInsets.only(bottom: 8),
+                                            child: Align(
+                                              alignment: Alignment.centerLeft,
+                                              child: OutlinedButton.icon(
+                                                onPressed: () => _requestRefund(o),
+                                                icon: const Icon(Icons.undo, size: 18),
+                                                label: const Text('Request refund'),
                                               ),
                                             ),
                                           ),

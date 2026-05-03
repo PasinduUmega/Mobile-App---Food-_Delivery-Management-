@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models.dart';
 import '../services/api.dart';
+import '../services/cart_manager.dart';
 import '../services/validators.dart';
 import 'payment_dashboard.dart';
 import 'widgets/app_feedback.dart';
@@ -9,8 +10,13 @@ import 'widgets/app_feedback.dart';
 /// Restaurant browsing & menu selection dashboard
 class RestaurantDashboard extends StatefulWidget {
   final User user;
+  final CartManager cartManager;
 
-  const RestaurantDashboard({super.key, required this.user});
+  const RestaurantDashboard({
+    super.key,
+    required this.user,
+    required this.cartManager,
+  });
 
   @override
   State<RestaurantDashboard> createState() => _RestaurantDashboardState();
@@ -22,7 +28,6 @@ class _RestaurantDashboardState extends State<RestaurantDashboard> {
   List<Store> _stores = const [];
   Store? _selectedStore;
   List<MenuItem> _menuItems = const [];
-  List<CartItem> _cart = [];
   /// Menu item id → stock quantity (when inventory exists for the store).
   Map<int, int> _stockByMenuItemId = const {};
 
@@ -68,14 +73,17 @@ class _RestaurantDashboardState extends State<RestaurantDashboard> {
   }
 
   Future<void> _loadMenuForStore(Store store) async {
+    final sameStore = _selectedStore?.id == store.id;
     setState(() {
       _loading = true;
       _selectedStore = store;
-      _cart = [];
     });
+    if (!sameStore) {
+      await widget.cartManager.ensureActiveCartForStore(widget.user.id, store.id);
+    }
     try {
       final menu = await _api.getStoreMenu(storeId: store.id);
-      final inv = await _api.listInventory();
+      final inv = await _api.listInventory(storeId: store.id);
       final menuIds = menu.map((m) => m.id).toSet();
       final stock = <int, int>{};
       for (final row in inv) {
@@ -132,36 +140,32 @@ class _RestaurantDashboardState extends State<RestaurantDashboard> {
   String _formatDay(DateTime d) =>
       '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
-  void _adjustCartLine(CartItem line, int delta) {
-    final idx = _cart.indexWhere((c) => c.productId == line.productId);
-    if (idx < 0) return;
+  Future<void> _adjustCartLine(DatabaseCartItem line, int delta) async {
     final nextQty = line.qty + delta;
     if (nextQty <= 0) {
-      _cart.removeAt(idx);
+      await widget.cartManager.removeItem(line.id);
     } else {
-      final stock = line.productId != null
-          ? _stockByMenuItemId[line.productId!]
-          : null;
+      final stock = _stockByMenuItemId[line.productId];
       final qErr = Validators.validateCartLineQty(
         nextQty,
         maxStock: stock,
       );
       if (qErr != null) {
-        AppFeedback.error(context, qErr);
+        if (mounted) AppFeedback.error(context, qErr);
         return;
       }
-      _cart[idx] = CartItem(
-        productId: line.productId,
-        name: line.name,
-        qty: nextQty,
-        unitPrice: line.unitPrice,
-        lineNote: line.lineNote,
+      await widget.cartManager.updateItem(
+        line.id,
+        nextQty,
+        maxStock: stock,
       );
     }
-    setState(() {});
+    if (widget.cartManager.error != null && mounted) {
+      AppFeedback.error(context, widget.cartManager.error!);
+    }
   }
 
-  void _addToCart(MenuItem item) {
+  Future<void> _addToCart(MenuItem item) async {
     if (item.price < 0) {
       AppFeedback.error(
         context,
@@ -174,35 +178,64 @@ class _RestaurantDashboardState extends State<RestaurantDashboard> {
       AppFeedback.error(context, 'This item is out of stock.');
       return;
     }
-    final idx = _cart.indexWhere((c) => c.productId == item.id);
-    if (idx >= 0) {
-      final existing = _cart[idx];
-      _cart[idx] = CartItem(
-        productId: existing.productId,
-        name: existing.name,
-        qty: existing.qty + 1,
-        unitPrice: existing.unitPrice,
-      );
-    } else {
-      _cart.add(
-        CartItem(
-          productId: item.id,
-          name: item.name,
-          qty: 1,
-          unitPrice: item.price,
-        ),
-      );
+    if (q != null) {
+      DatabaseCartItem? existing;
+      for (final e in widget.cartManager.cart?.items ?? const <DatabaseCartItem>[]) {
+        if (e.productId == item.id) {
+          existing = e;
+          break;
+        }
+      }
+      if (existing != null) {
+        final addErr = Validators.validateCartLineQty(
+          existing.qty + 1,
+          maxStock: q,
+        );
+        if (addErr != null) {
+          AppFeedback.error(context, addErr);
+          return;
+        }
+      }
     }
-    setState(() {});
-    AppFeedback.success(context, '${item.name} added to your cart');
+    await widget.cartManager.addItem(
+      productId: item.id,
+      name: item.name,
+      qty: 1,
+      unitPrice: item.price,
+    );
+    if (widget.cartManager.error != null) {
+      if (mounted) {
+        AppFeedback.error(context, widget.cartManager.error!);
+      }
+      return;
+    }
+    if (mounted) {
+      AppFeedback.success(context, '${item.name} added to your cart');
+    }
   }
 
-  int get _cartItemCount =>
-      _cart.fold(0, (sum, c) => sum + c.qty);
+  // ignore: use_first_where - extension not available
+  List<CartItem> get _orderLines {
+    final items = widget.cartManager.cart?.items;
+    if (items == null) return [];
+    return items
+        .map(
+          (i) => CartItem(
+            productId: i.productId,
+            name: i.name,
+            qty: i.qty,
+            unitPrice: i.unitPrice,
+            lineNote: i.lineNote,
+          ),
+        )
+        .toList();
+  }
 
-  String? get _cartError => Validators.validateCartSubtotal(_cart);
+  int get _cartItemCount => widget.cartManager.itemCount;
 
-  double get _subtotal => _cart.fold(0.0, (s, i) => s + i.qty * i.unitPrice);
+  String? get _cartError => Validators.validateCartSubtotal(_orderLines);
+
+  double get _subtotal => widget.cartManager.subtotal;
   double get _deliveryFee => 2.50;
   double get _total => _subtotal + _deliveryFee;
 
@@ -272,6 +305,9 @@ class _RestaurantDashboardState extends State<RestaurantDashboard> {
     final deliverTo =
         (addressLine != null && addressLine.isNotEmpty) ? addressLine : 'Add delivery address in profile';
 
+    return ListenableBuilder(
+      listenable: widget.cartManager,
+      builder: (context, __) {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
@@ -710,8 +746,8 @@ class _RestaurantDashboardState extends State<RestaurantDashboard> {
               ),
             ),
           ),
-          // Cart summary and checkout button
-          if (_cart.isNotEmpty)
+          // Cart summary and checkout button (synced to DB via [CartManager])
+          if (_orderLines.isNotEmpty)
             Material(
               elevation: 8,
               shadowColor: Colors.black26,
@@ -748,7 +784,7 @@ class _RestaurantDashboardState extends State<RestaurantDashboard> {
                           ),
                         ],
                       ),
-                      ..._cart.map(
+                      ...(widget.cartManager.cart?.items ?? const <DatabaseCartItem>[]).map(
                         (c) => Padding(
                           padding: const EdgeInsets.only(top: 8),
                           child: Row(
@@ -866,9 +902,10 @@ class _RestaurantDashboardState extends State<RestaurantDashboard> {
                                       builder: (context) => PaymentDashboard(
                                         user: widget.user,
                                         selectedStore: store,
-                                        cartItems: _cart,
+                                        cartItems: _orderLines,
                                         subtotal: _subtotal,
                                         deliveryFee: _deliveryFee,
+                                        cartManager: widget.cartManager,
                                       ),
                                     ),
                                   );
@@ -884,6 +921,8 @@ class _RestaurantDashboardState extends State<RestaurantDashboard> {
             ),
         ],
       ),
+    );
+      },
     );
   }
 }

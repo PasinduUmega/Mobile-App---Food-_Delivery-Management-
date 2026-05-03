@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../models.dart';
+import '../services/api.dart';
+import '../services/cart_manager.dart';
 import 'admin_dashboard.dart';
 import 'crud_suite_screen.dart';
 import 'delivery_management_dashboard.dart';
@@ -98,7 +100,7 @@ class UserDashboardScreen extends StatelessWidget {
                   subtitle: 'Restaurants, menu & cart checkout',
                   icon: Icons.restaurant_menu_outlined,
                   color: const Color(0xFFFF6A00),
-                  screen: RestaurantDashboard(user: user),
+                  screen: _BrowseWithCartShell(user: user),
                 ),
                 _ModuleTile(
                   title: 'My orders',
@@ -232,6 +234,20 @@ class UserDashboardScreen extends StatelessWidget {
           const SliverPadding(padding: EdgeInsets.only(bottom: 32)),
         ],
       ),
+    );
+  }
+}
+
+/// Admin “Browse & order” entry: own [CartManager] so the screen compiles.
+class _BrowseWithCartShell extends StatelessWidget {
+  final User user;
+  const _BrowseWithCartShell({required this.user});
+
+  @override
+  Widget build(BuildContext context) {
+    return RestaurantDashboard(
+      user: user,
+      cartManager: CartManager(api: ApiClient()),
     );
   }
 }

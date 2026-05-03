@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../models.dart';
 import '../services/api.dart';
+import '../services/pdf_service.dart';
 import '../services/validators.dart';
 import 'menu_management_dashboard.dart';
 
@@ -95,6 +96,143 @@ class _RestaurantManagementDashboardState
     }
   }
 
+  Future<void> _downloadFleetPdf() async {
+    if (_items.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No restaurants to export yet')),
+        );
+      }
+      return;
+    }
+    try {
+      await PdfService.generateRestaurantFleetPdf(
+        stores: _items,
+        titleSuffix: widget.ownerUserId != null ? 'My fleet' : null,
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.toString())));
+      }
+    }
+  }
+
+  Future<void> _showStoreDetailsSheet(Store store) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        final bottom = MediaQuery.viewPaddingOf(ctx).bottom;
+        return SingleChildScrollView(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(20, 8, 20, 20 + bottom),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  store.name,
+                  style: Theme.of(ctx).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w900,
+                      ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'ID #${store.id}',
+                  style: TextStyle(
+                    color: Colors.grey[600],
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                _detailRow(ctx, 'Address', store.address ?? '—'),
+                _detailRow(
+                  ctx,
+                  'Location',
+                  store.latitude != null && store.longitude != null
+                      ? '${store.latitude}, ${store.longitude}'
+                      : '—',
+                ),
+                if (store.ownerUserId != null)
+                  _detailRow(ctx, 'Owner user ID', '${store.ownerUserId}'),
+                _detailRow(
+                  ctx,
+                  'Updated',
+                  store.updatedAt.toString().substring(0, 16),
+                ),
+                if (store.imageUrl != null && store.imageUrl!.isNotEmpty)
+                  _detailRow(ctx, 'Image', store.imageUrl!),
+                const SizedBox(height: 20),
+                FilledButton.icon(
+                  onPressed: () async {
+                    Navigator.of(ctx).pop();
+                    try {
+                      await PdfService.generateStoreDetailsPdf(store);
+                    } catch (e) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(
+                          context,
+                        ).showSnackBar(SnackBar(content: Text(e.toString())));
+                      }
+                    }
+                  },
+                  icon: const Icon(Icons.picture_as_pdf_outlined),
+                  label: const Text('Download as PDF'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFFFF6A00),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  icon: const Icon(Icons.close, size: 18),
+                  label: const Text('Close'),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _detailRow(BuildContext context, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 100,
+            child: Text(
+              label,
+              style: TextStyle(
+                color: Colors.grey[700],
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(fontSize: 14, height: 1.3),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<bool?> _showEditDialog({Store? existing}) {
     return showDialog<bool>(
       context: context,
@@ -103,6 +241,7 @@ class _RestaurantManagementDashboardState
         existing: existing,
         api: _api,
         defaultOwnerUserId: widget.ownerUserId,
+        peerStores: _items,
       ),
     );
   }
@@ -112,9 +251,16 @@ class _RestaurantManagementDashboardState
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          widget.readOnly ? 'Restaurant Fleet (view only)' : 'Restaurant Fleet',
+          widget.readOnly
+              ? 'Restaurant dashboard (view only)'
+              : 'Restaurant dashboard',
         ),
         actions: [
+          IconButton(
+            onPressed: _loading ? null : _downloadFleetPdf,
+            icon: const Icon(Icons.download_outlined),
+            tooltip: 'Download fleet report (PDF)',
+          ),
           IconButton(onPressed: _reload, icon: const Icon(Icons.refresh)),
         ],
       ),
@@ -139,7 +285,7 @@ class _RestaurantManagementDashboardState
                       children: [
                         Expanded(
                           child: _buildStatCard(
-                            'Active Stores',
+                            'Restaurants',
                             _items.length.toString(),
                             Icons.store,
                             const Color(0xFFFF6A00),
@@ -192,6 +338,11 @@ class _RestaurantManagementDashboardState
                             'Image Uploads',
                             'In Progress',
                             false,
+                          ),
+                          _buildStatusRow(
+                            'Per-store inventory',
+                            'Active',
+                            true,
                           ),
                         ],
                       ),
@@ -350,6 +501,17 @@ class _RestaurantManagementDashboardState
                     ),
                     Row(
                       children: [
+                        IconButton(
+                          onPressed: () => _showStoreDetailsSheet(store),
+                          icon: const Icon(Icons.info_outline, size: 20),
+                          tooltip: 'Details & download',
+                          style: IconButton.styleFrom(
+                            backgroundColor: Colors.grey.withOpacity(0.08),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
                         if (!widget.readOnly) ...[
                           TextButton.icon(
                             onPressed: () => _edit(store),
@@ -440,7 +602,7 @@ class _RestaurantManagementDashboardState
                 const Divider(height: 32),
 
                 Tooltip(
-                  message: 'Open menu editor for this store',
+                  message: 'Edit dishes and prices for this store',
                   child: SizedBox(
                     width: double.infinity,
                     child: FilledButton.icon(
@@ -467,9 +629,9 @@ class _RestaurantManagementDashboardState
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(
                           horizontal: 12,
-                          vertical: 8,
+                          vertical: 10,
                         ),
-                        minimumSize: const Size(0, 36),
+                        minimumSize: const Size(0, 40),
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -491,11 +653,14 @@ class _RestaurantEditDialog extends StatefulWidget {
   final Store? existing;
   final ApiClient api;
   final int? defaultOwnerUserId;
+  /// Other locations for the same owner — used to enforce unique names in the fleet.
+  final List<Store> peerStores;
 
   const _RestaurantEditDialog({
     this.existing,
     required this.api,
     this.defaultOwnerUserId,
+    required this.peerStores,
   });
   @override
   State<_RestaurantEditDialog> createState() => _RestaurantEditDialogState();
@@ -512,11 +677,38 @@ class _RestaurantEditDialogState extends State<_RestaurantEditDialog> {
     super.initState();
     _nameCtrl = TextEditingController(text: widget.existing?.name ?? '');
     _addressCtrl = TextEditingController(text: widget.existing?.address ?? '');
+    _nameCtrl.addListener(() => setState(() {}));
+  }
+
+  String? _duplicateNameError(String name) {
+    final t = name.trim();
+    if (t.isEmpty) return null;
+    final key = t.toLowerCase();
+    for (final s in widget.peerStores) {
+      if (widget.existing != null && s.id == widget.existing!.id) continue;
+      if (s.name.trim().toLowerCase() == key) {
+        return 'You already have a restaurant with this name';
+      }
+    }
+    return null;
+  }
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _addressCtrl.dispose();
+    super.dispose();
   }
 
   Future<void> _pickImage() async {
     final image = await ImagePicker().pickImage(source: ImageSource.gallery);
     if (image != null) setState(() => _selectedImage = image);
+  }
+
+  String? _nameFieldError() {
+    final v = Validators.validateName(_nameCtrl.text);
+    if (v != null) return v;
+    return _duplicateNameError(_nameCtrl.text);
   }
 
   Future<void> _save() async {
@@ -528,6 +720,15 @@ class _RestaurantEditDialogState extends State<_RestaurantEditDialog> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(nameError)),
+        );
+      }
+      return;
+    }
+    final dup = _duplicateNameError(name);
+    if (dup != null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(dup)),
         );
       }
       return;
@@ -623,9 +824,11 @@ class _RestaurantEditDialogState extends State<_RestaurantEditDialog> {
 
             TextField(
               controller: _nameCtrl,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Store Name',
-                prefixIcon: Icon(Icons.store),
+                prefixIcon: const Icon(Icons.store),
+                helperText: 'Must be unique among your restaurants',
+                errorText: _nameCtrl.text.isNotEmpty ? _nameFieldError() : null,
               ),
             ),
             const SizedBox(height: 16),
@@ -649,7 +852,9 @@ class _RestaurantEditDialogState extends State<_RestaurantEditDialog> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: FilledButton(
-                    onPressed: _submitting ? null : _save,
+                    onPressed: (_submitting || _nameFieldError() != null)
+                        ? null
+                        : _save,
                     style: FilledButton.styleFrom(
                       backgroundColor: const Color(0xFFFF6A00),
                       shape: RoundedRectangleBorder(

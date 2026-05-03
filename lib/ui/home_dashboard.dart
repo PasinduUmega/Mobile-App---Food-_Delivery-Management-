@@ -11,12 +11,14 @@ class HomeDashboard extends StatelessWidget {
   final User user;
   final VoidCallback? onSignOut;
   final ValueChanged<bool>? onThemeChanged;
+  final ValueChanged<User>? onUserProfileUpdated;
 
   const HomeDashboard({
     super.key,
     required this.user,
     this.onSignOut,
     this.onThemeChanged,
+    this.onUserProfileUpdated,
   });
 
   @override
@@ -33,6 +35,7 @@ class HomeDashboard extends StatelessWidget {
           user: user,
           onSignOut: onSignOut,
           onThemeChanged: onThemeChanged,
+          onUserProfileUpdated: onUserProfileUpdated,
         );
       case UserRole.storeOwner:
         return StoreOwnerShellScreen(

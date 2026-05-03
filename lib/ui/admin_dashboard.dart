@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 
+import 'cart_audit_screen.dart';
 import 'crud_suite_screen.dart';
 import 'admin_delivery_hub_screen.dart';
 import 'inventory_management_dashboard.dart';
 import 'menu_management_dashboard.dart';
 import 'order_management_dashboard.dart';
 import 'payment_management_dashboard.dart';
+import 'refund_admin_dashboard.dart';
 import 'restaurant_management_dashboard.dart';
 import 'user_management_dashboard.dart';
 import 'widgets/mobile_partition_card.dart';
@@ -159,6 +161,14 @@ class AdminDashboard extends StatelessWidget {
                 ),
                 _buildModuleCard(
                   context,
+                  'Cart database (audit)',
+                  'All cart rows + line counts — sign in as admin',
+                  Icons.storage_outlined,
+                  const Color(0xFF5C6BC0),
+                  const CartAuditScreen(),
+                ),
+                _buildModuleCard(
+                  context,
                   'Delivery & Logistics',
                   'Driver management, ratings, tracking & full CRUD',
                   Icons.delivery_dining_outlined,
@@ -196,6 +206,14 @@ class AdminDashboard extends StatelessWidget {
                   Icons.account_balance_wallet_outlined,
                   const Color(0xFF27AE60),
                   const PaymentManagementDashboard(readOnly: true),
+                ),
+                _buildModuleCard(
+                  context,
+                  'Refunds',
+                  'Customer requests — approve, reject, or mark processed (admin only)',
+                  Icons.undo_outlined,
+                  const Color(0xFF2D9CDB),
+                  const RefundAdminDashboard(),
                 ),
               ]),
             ),

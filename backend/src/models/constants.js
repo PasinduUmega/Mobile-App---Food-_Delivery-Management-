@@ -1,0 +1,11 @@
+export const PAYMENT_METHODS = new Set(['PAYPAL', 'CASH_ON_DELIVERY', 'ONLINE_BANKING']);
+export const PAYMENT_STATUSES = new Set(['CREATED', 'APPROVAL_PENDING', 'AUTHORIZED', 'CAPTURED', 'FAILED', 'CANCELLED']);
+
+export const USER_ROLES = new Set(['CUSTOMER', 'ADMIN', 'STORE_OWNER', 'DELIVERY_DRIVER']);
+/** Public signup roles */
+export const SIGNUP_ROLES = new Set(['CUSTOMER', 'ADMIN', 'STORE_OWNER', 'DELIVERY_DRIVER']);
+
+export const MAX_CART_LINE_QTY = 50;
+
+export const REFUND_STATUSES = new Set(['PENDING', 'APPROVED', 'REJECTED', 'PROCESSED']);
+export const PAID_LIKE_ORDER_STATUSES = new Set(['PAID', 'PREPARING', 'READY', 'COMPLETED']);

@@ -1,12 +1,19 @@
 import 'package:flutter/material.dart';
 import '../models.dart';
 import '../services/api.dart';
+import '../services/cart_manager.dart';
 import '../services/validators.dart';
 import 'payment_method_screen.dart';
 
 class CartScreen extends StatefulWidget {
   final int userId;
-  const CartScreen({super.key, required this.userId});
+  final CartManager cartManager;
+
+  const CartScreen({
+    super.key,
+    required this.userId,
+    required this.cartManager,
+  });
 
   @override
   State<CartScreen> createState() => _CartScreenState();
@@ -14,109 +21,47 @@ class CartScreen extends StatefulWidget {
 
 class _CartScreenState extends State<CartScreen> {
   final _api = ApiClient();
-  bool _loading = true;
-  ShoppingCart? _cart;
-  String? _error;
 
   @override
   void initState() {
     super.initState();
-    _loadCart();
-  }
-
-  Future<void> _loadCart() async {
-    setState(() {
-      _loading = true;
-      _error = null;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      widget.cartManager.refreshCart();
     });
-    try {
-      final cart = await _api.getActiveCart(userId: widget.userId);
-      if (mounted) {
-        setState(() {
-          _cart = cart;
-          _loading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _error = e.toString();
-          _loading = false;
-        });
-      }
-    }
-  }
-
-  Future<void> _updateQty(DatabaseCartItem item, int delta) async {
-    if (_cart == null) return;
-    final newQty = item.qty + delta;
-    if (newQty <= 0) {
-      await _remove(item);
-      return;
-    }
-
-    final qtyErr = Validators.validateCartLineQty(newQty);
-    if (qtyErr != null) {
-      _showError(qtyErr);
-      return;
-    }
-
-    try {
-      final updatedItems = await _api.updateCartItem(
-        cartId: _cart!.id,
-        itemId: item.id,
-        qty: newQty,
-      );
-      if (!mounted) return;
-      setState(() {
-        _cart = ShoppingCart(
-          id: _cart!.id,
-          userId: _cart!.userId,
-          storeId: _cart!.storeId,
-          status: _cart!.status,
-          createdAt: _cart!.createdAt,
-          updatedAt: DateTime.now(),
-          items: updatedItems,
-        );
-      });
-    } catch (e) {
-      if (!mounted) return;
-      _showError(e.toString());
-    }
-  }
-
-  Future<void> _remove(DatabaseCartItem item) async {
-    if (_cart == null) return;
-    try {
-      final updatedItems = await _api.removeFromCart(
-        cartId: _cart!.id,
-        itemId: item.id,
-      );
-      if (!mounted) return;
-      setState(() {
-        _cart = ShoppingCart(
-          id: _cart!.id,
-          userId: _cart!.userId,
-          storeId: _cart!.storeId,
-          status: _cart!.status,
-          createdAt: _cart!.createdAt,
-          updatedAt: DateTime.now(),
-          items: updatedItems,
-        );
-      });
-    } catch (e) {
-      if (!mounted) return;
-      _showError(e.toString());
-    }
   }
 
   void _showError(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
+  Future<void> _updateQty(DatabaseCartItem item, int delta) async {
+    final cart = widget.cartManager.cart;
+    if (cart == null) return;
+    final newQty = item.qty + delta;
+    if (newQty <= 0) {
+      await widget.cartManager.removeItem(item.id);
+    } else {
+      final qtyErr = Validators.validateCartLineQty(newQty);
+      if (qtyErr != null) {
+        _showError(qtyErr);
+        return;
+      }
+      await widget.cartManager.updateItem(item.id, newQty);
+    }
+    if (widget.cartManager.error != null && mounted) {
+      _showError(widget.cartManager.error!);
+    }
+  }
+
   Future<void> _checkout() async {
-    if (_cart == null || _cart!.items.isEmpty) return;
-    final cartItemsForValidation = _cart!.items
+    final cart = widget.cartManager.cart;
+    if (cart == null || cart.items.isEmpty) return;
+    if (cart.storeId == null) {
+      _showError('Select a restaurant on Home and add items before checkout.');
+      return;
+    }
+    final cartItemsForValidation = cart.items
         .map(
           (i) => CartItem(
             productId: i.productId,
@@ -160,25 +105,17 @@ class _CartScreenState extends State<CartScreen> {
       );
       if (payNow == null) return;
 
+      const deliveryFee = 2.5;
       final createdOrder = await _api.createOrder(
         userId: widget.userId,
-        storeId: _cart!.storeId,
-        items: _cart!.items
-            .map(
-              (item) => CartItem(
-                productId: item.productId,
-                name: item.name,
-                qty: item.qty,
-                unitPrice: item.unitPrice,
-                lineNote: item.lineNote,
-              ),
-            )
-            .toList(),
+        storeId: cart.storeId!,
+        items: cartItemsForValidation,
+        deliveryFee: deliveryFee,
+        currency: 'LKR',
+        cartId: cart.id,
       );
       if (!mounted) return;
-      try {
-        await _api.clearCart(cartId: _cart!.id);
-      } catch (_) {}
+      await widget.cartManager.afterOrderPlaced(widget.userId, cart.storeId!);
 
       if (!mounted) return;
 
@@ -188,7 +125,6 @@ class _CartScreenState extends State<CartScreen> {
             content: Text('Order placed. Pay the driver cash on delivery.'),
           ),
         );
-        await _loadCart();
         return;
       }
 
@@ -198,7 +134,6 @@ class _CartScreenState extends State<CartScreen> {
           builder: (_) => PaymentMethodScreen(order: createdOrder),
         ),
       );
-      await _loadCart();
     } catch (e) {
       if (!mounted) return;
       _showError(e.toString());
@@ -207,26 +142,41 @@ class _CartScreenState extends State<CartScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('My Cart'),
-        actions: [
-          IconButton(
-            onPressed: _loadCart,
-            icon: const Icon(Icons.refresh),
+    return ListenableBuilder(
+      listenable: widget.cartManager,
+      builder: (context, __) {
+        final cart = widget.cartManager.cart;
+        final loading = widget.cartManager.isLoading;
+        final err = widget.cartManager.error;
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('My Cart'),
+            actions: [
+              IconButton(
+                onPressed: loading
+                    ? null
+                    : () => widget.cartManager.refreshCart(),
+                icon: const Icon(Icons.refresh),
+              ),
+            ],
           ),
-        ],
-      ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-              ? Center(child: Text(_error!))
-              : _cart == null || _cart!.items.isEmpty
-                  ? _buildEmptyCart()
-                  : _buildCartList(),
-      bottomNavigationBar: _cart != null && _cart!.items.isNotEmpty
-          ? _buildBottomBar()
-          : null,
+          body: loading && cart == null
+              ? const Center(child: CircularProgressIndicator())
+              : err != null && cart == null
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Text(err),
+                      ),
+                    )
+                  : cart == null || cart.items.isEmpty
+                      ? _buildEmptyCart()
+                      : _buildCartList(cart),
+          bottomNavigationBar: cart != null && cart.items.isNotEmpty
+              ? _buildBottomBar(cart)
+              : null,
+        );
+      },
     );
   }
 
@@ -237,18 +187,27 @@ class _CartScreenState extends State<CartScreen> {
         children: [
           Icon(Icons.shopping_cart_outlined, size: 80, color: Colors.grey[300]),
           const SizedBox(height: 16),
-          const Text('Your cart is empty', style: TextStyle(fontSize: 18, color: Colors.grey)),
+          const Text(
+            'Your cart is empty',
+            style: TextStyle(fontSize: 18, color: Colors.grey),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Add dishes from Home — your cart is saved in the app.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.grey[600], fontSize: 13),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildCartList() {
+  Widget _buildCartList(ShoppingCart cart) {
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: _cart!.items.length,
+      itemCount: cart.items.length,
       itemBuilder: (ctx, i) {
-        final item = _cart!.items[i];
+        final item = cart.items[i];
         return Card(
           margin: const EdgeInsets.only(bottom: 12),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -260,11 +219,23 @@ class _CartScreenState extends State<CartScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(item.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      Text(
+                        item.name,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
                       if (item.lineNote != null)
-                        Text(item.lineNote!, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                        Text(
+                          item.lineNote!,
+                          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                        ),
                       const SizedBox(height: 4),
-                      Text('LKR ${item.unitPrice.toStringAsFixed(2)}', style: const TextStyle(color: Color(0xFFFF6A00))),
+                      Text(
+                        'LKR ${item.unitPrice.toStringAsFixed(2)}',
+                        style: const TextStyle(color: Color(0xFFFF6A00)),
+                      ),
                     ],
                   ),
                 ),
@@ -274,7 +245,10 @@ class _CartScreenState extends State<CartScreen> {
                       onPressed: () => _updateQty(item, -1),
                       icon: const Icon(Icons.remove_circle_outline),
                     ),
-                    Text('${item.qty}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                    Text(
+                      '${item.qty}',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
                     IconButton(
                       onPressed: () => _updateQty(item, 1),
                       icon: const Icon(Icons.add_circle_outline),
@@ -293,13 +267,26 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 
-  Widget _buildBottomBar() {
-    final subtotal = _cart!.getSubtotal();
+  Future<void> _remove(DatabaseCartItem item) async {
+    await widget.cartManager.removeItem(item.id);
+    if (widget.cartManager.error != null && mounted) {
+      _showError(widget.cartManager.error!);
+    }
+  }
+
+  Widget _buildBottomBar(ShoppingCart cart) {
+    final subtotal = cart.getSubtotal();
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -5))],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, -5),
+          ),
+        ],
       ),
       child: SafeArea(
         child: Column(
@@ -308,8 +295,18 @@ class _CartScreenState extends State<CartScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Total', style: TextStyle(fontSize: 16, color: Colors.grey)),
-                Text('LKR ${subtotal.toStringAsFixed(2)}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFFFF6A00))),
+                const Text(
+                  'Subtotal + delivery on Home',
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+                Text(
+                  'LKR ${subtotal.toStringAsFixed(2)}',
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFFFF6A00),
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 16),
@@ -320,9 +317,14 @@ class _CartScreenState extends State<CartScreen> {
                 style: FilledButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   backgroundColor: const Color(0xFFFF6A00),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
-                child: const Text('Checkout Now', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                child: const Text(
+                  'Checkout now',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
               ),
             ),
           ],

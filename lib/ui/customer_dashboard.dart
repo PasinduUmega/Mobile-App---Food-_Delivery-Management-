@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../models.dart';
+import '../services/api.dart';
+import '../services/cart_manager.dart';
 import 'cart_screen.dart';
 import 'my_orders_screen.dart';
 import 'restaurant_dashboard.dart';
@@ -11,12 +13,14 @@ class CustomerDashboard extends StatefulWidget {
   final User user;
   final Function()? onSignOut;
   final ValueChanged<bool>? onThemeChanged;
+  final ValueChanged<User>? onUserProfileUpdated;
 
   const CustomerDashboard({
     super.key,
     required this.user,
     this.onSignOut,
     this.onThemeChanged,
+    this.onUserProfileUpdated,
   });
 
   @override
@@ -25,24 +29,50 @@ class CustomerDashboard extends StatefulWidget {
 
 class _CustomerDashboardState extends State<CustomerDashboard> {
   int _selectedIndex = 0;
-
-  late final List<Widget> _screens;
-  late final List<NavigationDestination> _destinations;
+  late User _user;
+  late final CartManager _cartManager;
 
   @override
   void initState() {
     super.initState();
+    _user = widget.user;
+    _cartManager = CartManager(api: ApiClient());
+  }
+
+  @override
+  void didUpdateWidget(CustomerDashboard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.user.id != oldWidget.user.id ||
+        widget.user.updatedAt != oldWidget.user.updatedAt) {
+      _user = widget.user;
+    }
+  }
+
+  void _onProfileUpdated(User u) {
+    setState(() => _user = u);
+    widget.onUserProfileUpdated?.call(u);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final profile = UserProfileScreen(
-      user: widget.user,
+      user: _user,
       onSignOut: widget.onSignOut,
       onThemeChanged: widget.onThemeChanged,
+      onUserUpdated: _onProfileUpdated,
     );
-    final browse = RestaurantDashboard(user: widget.user);
-    final cart = CartScreen(userId: widget.user.id);
-    final orders = MyOrdersScreen(user: widget.user);
+    final browse = RestaurantDashboard(
+      user: _user,
+      cartManager: _cartManager,
+    );
+    final cart = CartScreen(
+      userId: _user.id,
+      cartManager: _cartManager,
+    );
+    final orders = MyOrdersScreen(user: _user);
 
-    _screens = [browse, cart, orders, profile];
-    _destinations = const [
+    final screens = [browse, cart, orders, profile];
+    const destinations = [
       NavigationDestination(
         icon: Icon(Icons.home_outlined),
         selectedIcon: Icon(Icons.home_rounded),
@@ -64,22 +94,19 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
         label: 'Account',
       ),
     ];
-  }
 
-  @override
-  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: IndexedStack(
-        index: _selectedIndex.clamp(0, _screens.length - 1),
-        children: _screens,
+        index: _selectedIndex.clamp(0, screens.length - 1),
+        children: screens,
       ),
       bottomNavigationBar: NavigationBar(
-        selectedIndex: _selectedIndex.clamp(0, _destinations.length - 1),
+        selectedIndex: _selectedIndex.clamp(0, destinations.length - 1),
         onDestinationSelected: (index) => setState(() => _selectedIndex = index),
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
         height: 72,
-        destinations: _destinations,
+        destinations: destinations,
       ),
     );
   }

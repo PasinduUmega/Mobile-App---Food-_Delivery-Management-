@@ -4,21 +4,15 @@ Food Rush (Flutter) + Payments (PayPal/COD/Online Banking demo).
 
 ## Getting Started
 
-### Backend (MySQL + PayPal)
+### Backend (MongoDB + Express + PayPal)
 
-- **1) Create / use your MySQL schema**: `food_rush`
-- **2) Apply tables**:
-
-```bash
-mysql -u root -p food_rush < backend/sql/food_rush_payments.sql
-```
-
-- **3) Configure backend env**:
+- **1)** Run [MongoDB](https://www.mongodb.com/docs/manual/installation/) locally (or point `MONGODB_URI` at Atlas).
+- **2) Configure backend env**:
   - Copy `backend/.env.example` → `backend/.env`
-  - Set `MYSQL_*`
+  - Set `MONGODB_URI` and optionally `MONGODB_DB` (default `food_rush`). Indexes are created on startup via `backend/src/config/mongo.js`.
   - Set PayPal sandbox credentials: `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`
 
-- **4) Run backend**:
+- **3) Run backend**:
 
 ```bash
 cd backend
@@ -27,6 +21,42 @@ npm run dev
 ```
 
 Backend default: `http://localhost:8080`
+
+**Layout**
+
+- `src/server.js` — connect MongoDB, seed default admin, `createApp`, listen  
+- `src/app.js` — Express app (`cors`, JSON), PayPal client, `registerRoutes`  
+- `src/routes/` — HTTP routers (mount paths)  
+- `src/controllers/` — request / response adapters  
+- `src/services/` — business rules / orchestration helpers  
+- `src/repositories/` — Mongo accessors (`coll()`)  
+- `src/models/` — shared enums / constants (`constants.js`)  
+- `src/utils/` — parsers, request user header, formatting  
+- `src/config/mongo.js`, `src/bootstrap/`, `src/paypal.js`
+- `docs/API_ENDPOINTS.md` — full route list grouped by domain (incl. health, catalog, drivers, feedback)  
+- `docs/API_ENDPOINT_TABLES_README.md` — **seven** Swagger-style tables: Method · Endpoint · Description · Protected (Auth, Stores, Orders+refunds, Payments+receipts, Users, Deliveries, Carts)
+
+### Web dashboard (`frontend/` — Vite + React)
+
+In development, `/api` and `/health` are proxied to Express on port `8080` (see `frontend/vite.config.js`).
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Optional: `frontend/.env` with `VITE_API_BASE_URL` for production builds.
+
+### React Native (`frontend/native/`)
+
+Shares the same API as Flutter (`lib/`). Configure the device URL in `frontend/native/src/config.js`, then:
+
+```bash
+cd frontend/native
+npm install
+npm start
+```
 
 ### Flutter app
 

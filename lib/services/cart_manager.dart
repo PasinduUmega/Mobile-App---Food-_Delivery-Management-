@@ -47,6 +47,45 @@ class CartManager extends ChangeNotifier {
     }
   }
 
+  /// Ensures a single [ACTIVE] cart for [storeId]. Abandons a cart for another store.
+  Future<void> ensureActiveCartForStore(int userId, int storeId) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+    try {
+      var cart = await _api.getActiveCart(userId: userId);
+      if (cart != null && cart.storeId != null && cart.storeId != storeId) {
+        await _api.clearCart(cartId: cart.id);
+        cart = null;
+      }
+      if (cart == null) {
+        _currentCart = await _api.createCart(userId: userId, storeId: storeId);
+      } else {
+        _currentCart = cart;
+      }
+      _error = null;
+    } catch (e) {
+      _error = e.toString();
+      debugPrint('❌ ensureActiveCartForStore: $_error');
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  /// After an order is created: clear the DB cart and open a new empty one for the same store.
+  Future<void> afterOrderPlaced(int userId, int storeId) async {
+    try {
+      if (_currentCart != null) {
+        await _api.clearCart(cartId: _currentCart!.id);
+      }
+    } catch (e) {
+      debugPrint('clearCart after order: $e');
+    }
+    _currentCart = null;
+    await ensureActiveCartForStore(userId, storeId);
+  }
+
   /// Add item to cart
   Future<void> addItem({
     required int productId,
@@ -96,7 +135,11 @@ class CartManager extends ChangeNotifier {
   }
 
   /// Update cart item quantity (0 = remove)
-  Future<void> updateItem(int itemId, int newQty) async {
+  Future<void> updateItem(
+    int itemId,
+    int newQty, {
+    int? maxStock,
+  }) async {
     if (_currentCart == null) {
       _error = 'Cart not initialized';
       notifyListeners();
@@ -104,7 +147,10 @@ class CartManager extends ChangeNotifier {
     }
 
     if (newQty > 0) {
-      final qErr = Validators.validateCartLineQty(newQty);
+      final qErr = Validators.validateCartLineQty(
+        newQty,
+        maxStock: maxStock,
+      );
       if (qErr != null) {
         _error = qErr;
         notifyListeners();

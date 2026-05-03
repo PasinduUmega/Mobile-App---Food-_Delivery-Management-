@@ -43,6 +43,9 @@ class ApiClient {
     int? storeId,
     double? deliveryLatitude,
     double? deliveryLongitude,
+    /// When set, the server removes these lines from [cart_items] and abandons the cart
+    /// in the same transaction as the order (keeps DB in sync with [order_items]).
+    int? cartId,
   }) async {
     final uri = Uri.parse('$baseUrl/api/orders');
     final resp = await _http.post(
@@ -55,6 +58,7 @@ class ApiClient {
         'deliveryFee': deliveryFee,
         'deliveryLatitude': deliveryLatitude,
         'deliveryLongitude': deliveryLongitude,
+        if (cartId != null) 'cartId': cartId,
         'items': items.map((e) => e.toJson()).toList(),
       }),
     );
@@ -298,12 +302,16 @@ class ApiClient {
     required String name,
     required String email,
     String? mobile,
+    String? address,
     UserRole? role,
   }) async {
     final uri = Uri.parse('$baseUrl/api/users/$id');
     final body = <String, dynamic>{'name': name, 'email': email};
-    if (mobile != null && mobile.isNotEmpty) {
-      body['mobile'] = mobile;
+    if (mobile != null) {
+      body['mobile'] = mobile.isEmpty ? null : mobile;
+    }
+    if (address != null) {
+      body['address'] = address.isEmpty ? null : address;
     }
     if (role != null) {
       body['role'] = role.apiValue;
@@ -320,6 +328,75 @@ class ApiClient {
       );
     }
     return User.fromJson(respBody);
+  }
+
+  Future<CustomerFeedbackEntry> createCustomerFeedback({
+    required int rating,
+    required String feedback,
+    String? category,
+  }) async {
+    final uri = Uri.parse('$baseUrl/api/customer-feedback');
+    final resp = await _http.post(
+      uri,
+      headers: _jsonHeadersWithSession(),
+      body: jsonEncode({
+        'rating': rating,
+        'feedback': feedback,
+        if (category != null && category.trim().isNotEmpty)
+          'category': category.trim(),
+      }),
+    );
+    final body = _decode(resp);
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
+      throw ApiException(
+        body['error']?.toString() ?? 'Failed to submit feedback',
+      );
+    }
+    return CustomerFeedbackEntry.fromJson(body);
+  }
+
+  Future<List<CustomerFeedbackEntry>> listMyCustomerFeedback() async {
+    final uri = Uri.parse('$baseUrl/api/customer-feedback/me');
+    final resp = await _http.get(uri, headers: _jsonHeadersWithSession());
+    final body = _decode(resp);
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
+      throw ApiException(
+        body['error']?.toString() ?? 'Failed to load your feedback',
+      );
+    }
+    final items = body['items'];
+    if (items is List) {
+      return items
+          .whereType<Map>()
+          .map(
+            (e) =>
+                CustomerFeedbackEntry.fromJson(e.cast<String, dynamic>()),
+          )
+          .toList();
+    }
+    return const [];
+  }
+
+  Future<List<CustomerFeedbackEntry>> listCustomerFeedbackAdmin() async {
+    final uri = Uri.parse('$baseUrl/api/customer-feedback');
+    final resp = await _http.get(uri, headers: _jsonHeadersWithSession());
+    final body = _decode(resp);
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
+      throw ApiException(
+        body['error']?.toString() ?? 'Failed to list customer feedback',
+      );
+    }
+    final items = body['items'];
+    if (items is List) {
+      return items
+          .whereType<Map>()
+          .map(
+            (e) =>
+                CustomerFeedbackEntry.fromJson(e.cast<String, dynamic>()),
+          )
+          .toList();
+    }
+    return const [];
   }
 
   Future<bool> deleteUser({required int id}) async {
@@ -487,8 +564,11 @@ class ApiClient {
     return body['deleted'] == true;
   }
 
-  Future<List<InventoryItem>> listInventory() async {
-    final uri = Uri.parse('$baseUrl/api/inventory');
+  Future<List<InventoryItem>> listInventory({int? storeId}) async {
+    final uri = storeId != null
+        ? Uri.parse('$baseUrl/api/inventory')
+            .replace(queryParameters: {'storeId': '$storeId'})
+        : Uri.parse('$baseUrl/api/inventory');
     final resp = await _http.get(uri);
     final body = _decode(resp);
     if (resp.statusCode < 200 || resp.statusCode >= 300) {
@@ -994,6 +1074,28 @@ class ApiClient {
         .toList();
   }
 
+  /// Admin only: list cart headers with line counts (past + active).
+  Future<List<CartAuditRow>> listCartsAudit({int limit = 200}) async {
+    final uri = Uri.parse('$baseUrl/api/carts/audit').replace(
+      queryParameters: {'limit': '$limit'},
+    );
+    final resp = await _http.get(uri, headers: _jsonHeadersWithSession());
+    final body = _decode(resp);
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
+      throw ApiException(
+        body['error']?.toString() ?? 'Failed to list cart audit',
+      );
+    }
+    final items = body['items'];
+    if (items is List) {
+      return items
+          .whereType<Map>()
+          .map((e) => CartAuditRow.fromJson(e.cast<String, dynamic>()))
+          .toList();
+    }
+    return const [];
+  }
+
   Future<void> clearCart({required int cartId}) async {
     final uri = Uri.parse('$baseUrl/api/carts/$cartId');
     final resp = await _http.delete(uri);
@@ -1271,6 +1373,81 @@ class ApiClient {
           .toList();
     }
     return const [];
+  }
+
+  /// Customers must pass [userId] equal to the signed-in user. Admins may omit it to list all.
+  Future<List<RefundRequest>> listRefundRequests({
+    int? userId,
+    String? status,
+  }) async {
+    final qp = <String, String>{
+      if (userId != null) 'userId': '$userId',
+      if (status != null && status.trim().isNotEmpty) 'status': status.trim(),
+    };
+    final uri = Uri.parse(
+      '$baseUrl/api/refund-requests',
+    ).replace(queryParameters: qp.isEmpty ? null : qp);
+    final resp = await _http.get(uri, headers: _jsonHeadersWithSession());
+    final body = _decode(resp);
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
+      throw ApiException(
+        body['error']?.toString() ?? 'Failed to list refund requests',
+      );
+    }
+    final items = body['items'];
+    if (items is List) {
+      return items
+          .whereType<Map>()
+          .map((e) => RefundRequest.fromJson(e.cast<String, dynamic>()))
+          .toList();
+    }
+    return const [];
+  }
+
+  Future<RefundRequest> createRefundRequest({
+    required int orderId,
+    String? reason,
+  }) async {
+    final uri = Uri.parse('$baseUrl/api/refund-requests');
+    final resp = await _http.post(
+      uri,
+      headers: _jsonHeadersWithSession(),
+      body: jsonEncode({
+        'orderId': orderId,
+        if (reason != null && reason.trim().isNotEmpty) 'reason': reason.trim(),
+      }),
+    );
+    final body = _decode(resp);
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
+      throw ApiException(
+        body['error']?.toString() ?? 'Failed to submit refund request',
+      );
+    }
+    return RefundRequest.fromJson(body);
+  }
+
+  Future<RefundRequest> updateRefundRequestAdmin({
+    required int id,
+    required String status,
+    String? adminNote,
+  }) async {
+    final uri = Uri.parse('$baseUrl/api/refund-requests/$id');
+    final resp = await _http.patch(
+      uri,
+      headers: _jsonHeadersWithSession(),
+      body: jsonEncode({
+        'status': status,
+        if (adminNote != null && adminNote.trim().isNotEmpty)
+          'adminNote': adminNote.trim(),
+      }),
+    );
+    final body = _decode(resp);
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
+      throw ApiException(
+        body['error']?.toString() ?? 'Failed to update refund request',
+      );
+    }
+    return RefundRequest.fromJson(body);
   }
 
   Map<String, dynamic> _decode(http.Response resp) {
