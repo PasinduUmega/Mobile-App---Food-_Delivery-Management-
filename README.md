@@ -57,4 +57,5 @@ samples, guidance on mobile development, and a full API reference.
 
 ## Deploy Link 
 Backend Deploy -  https://railway.com/project/a1375673-02ff-4270-99c3-1dfc35628c2f?environmentId=69d04ead-3b2a-4592-ba89-8e6c52674abe
+
 Frontedn Deploy - https://sparkling-strudel-8dbddb.netlify.app/
