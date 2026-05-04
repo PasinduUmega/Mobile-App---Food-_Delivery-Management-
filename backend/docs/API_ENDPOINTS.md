@@ -1,4 +1,4 @@
-# Food Rush API — endpoint tables (seven components)
+# Food Rush API — endpoint tables (management components)
 
 Base URL examples: `http://localhost:8080` · Android emulator → `http://10.0.2.2:8080`.
 
@@ -6,24 +6,17 @@ Many routes expect signed-in identity via header **`X-User-Id: <numeric user id>
 
 ---
 
-## 1. Infrastructure
+## 1. Identity & authentication
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/health` | MongoDB ping; returns `{ ok: true }` or 500 |
-
----
-
-## 2. Identity & authentication
-
-| Method | Path | Description |
-|--------|------|-------------|
+| GET | `/api/status` | API status + stack info + management component list |
 | POST | `/api/auth/signup` | Register (`name`, `email`, `password`, optional `role`, `mobile`, `address`) |
 | POST | `/api/auth/signin` | Login (`email`, `password`); returns user JSON (no password hash) |
 
 ---
 
-## 3. Users & administrators
+## 2. User management
 
 | Method | Path | Description |
 |--------|------|-------------|
@@ -36,20 +29,46 @@ Many routes expect signed-in identity via header **`X-User-Id: <numeric user id>
 
 ---
 
-## 4. Stores, menu & inventory (catalog)
+## 3. Restaurant management
 
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/api/stores` | List stores (`ownerUserId` query optional) |
+| GET | `/api/restaurants` | Alias of stores list (restaurant naming) |
 | POST | `/api/stores` | Create store |
+| POST | `/api/restaurants` | Alias of store create (restaurant naming) |
 | GET | `/api/stores/:id/menu` | Menu items for store |
 | GET | `/api/stores/:storeId/orders` | Orders for store |
 | GET | `/api/stores/:id` | Store by id |
+| GET | `/api/restaurants/:id` | Alias of store by id |
 | PUT | `/api/stores/:id` | Update store |
+| PUT | `/api/restaurants/:id` | Alias of store update |
 | DELETE | `/api/stores/:id` | Delete store (+ menu rows + inventory) |
+| DELETE | `/api/restaurants/:id` | Alias of store delete |
+ 
+---
+
+## 4. Menu management
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/menu_items` | List menu items (`storeId` query optional) |
+| GET | `/api/menu_items/:id` | Get menu item by id |
 | POST | `/api/menu_items` | Create menu item (+ inventory row) |
+| GET | `/api/menu` | Alias of menu list endpoint |
+| GET | `/api/menu/:id` | Alias of menu item by id |
+| POST | `/api/menu` | Alias of menu item create |
 | PUT | `/api/menu_items/:id` | Update menu item |
+| PUT | `/api/menu/:id` | Alias of menu item update |
 | DELETE | `/api/menu_items/:id` | Delete menu item (+ inventory) |
+| DELETE | `/api/menu/:id` | Alias of menu item delete |
+ 
+---
+
+## 5. Inventory management
+
+| Method | Path | Description |
+|--------|------|-------------|
 | GET | `/api/inventory` | List inventory rows (`storeId` filter optional) |
 | POST | `/api/inventory` | Upsert by `menuItemId` |
 | PUT | `/api/inventory/:id` | Set `quantity` |
@@ -57,7 +76,7 @@ Many routes expect signed-in identity via header **`X-User-Id: <numeric user id>
 
 ---
 
-## 5. Shopping carts
+## 6. Order and cart management
 
 | Method | Path | Description |
 |--------|------|-------------|
@@ -69,18 +88,18 @@ Many routes expect signed-in identity via header **`X-User-Id: <numeric user id>
 | POST | `/api/carts/:cartId/items` | Add line (`productId`, `name`, `qty`, `unitPrice`, optional `lineNote`) |
 | PUT | `/api/carts/:cartId/items/:itemId` | Set line `qty` (0 deletes line) |
 | DELETE | `/api/carts/:cartId/items/:itemId` | Remove line |
-
----
-
-## 6. Orders, refunds, payments & receipts
-
-| Method | Path | Description |
-|--------|------|-------------|
 | POST | `/api/orders` | Create order (`items`, `storeId`, `currency`, `deliveryFee`, …; optional `cartId` cleanup) |
 | GET | `/api/orders` | List (`userId`, `storeId`, `status`, `limit`, `offset`) |
 | GET | `/api/orders/:id` | Order + lines |
 | PUT | `/api/orders/:id` | Update `status` and/or replace `items` |
 | DELETE | `/api/orders/:id` | Delete (blocked for some paid/active statuses) |
+
+---
+
+## 7. Payment management
+
+| Method | Path | Description |
+|--------|------|-------------|
 | POST | `/api/refund-requests` | Customer refund request (**`X-User-Id`**) |
 | GET | `/api/refund-requests` | List: admin all; customer `?userId=` must match header |
 | PATCH | `/api/refund-requests/:id` | Admin update status/note |
@@ -99,7 +118,7 @@ Many routes expect signed-in identity via header **`X-User-Id: <numeric user id>
 
 ---
 
-## 7. Delivery, drivers & customer feedback
+## 8. Admin and delivery management
 
 | Method | Path | Description |
 |--------|------|-------------|
@@ -127,12 +146,13 @@ Many routes expect signed-in identity via header **`X-User-Id: <numeric user id>
 
 | # | Component | Route groups |
 |---|-----------|----------------|
-| 1 | Infrastructure | health |
-| 2 | Authentication | `/api/auth` |
-| 3 | Users | `/api/users` |
-| 4 | Catalog | `/api/stores`, `/api/menu_items`, `/api/inventory` |
-| 5 | Carts | `/api/carts` |
-| 6 | Orders & money | `/api/orders`, `/api/refund-requests`, `/api/payments`, `/api/receipts` |
-| 7 | Delivery & feedback | `/api/deliveries`, `/api/drivers`, `/api/driver-ratings`, `/api/customer-feedback` |
+| 1 | Identity & authentication | `/api/auth` |
+| 2 | User management | `/api/users` |
+| 3 | Restaurant management | `/api/stores`, `/api/restaurants` |
+| 4 | Menu management | `/api/menu_items`, `/api/menu` |
+| 5 | Inventory management | `/api/inventory` |
+| 6 | Order and cart management | `/api/orders`, `/api/carts` |
+| 7 | Payment management | `/api/refund-requests`, `/api/payments`, `/api/receipts` |
+| 8 | Admin and delivery management | `/api/deliveries`, `/api/drivers`, `/api/driver-ratings`, `/api/customer-feedback` |
 
 For MongoDB indexes and collection names see `src/config/mongo.js`.

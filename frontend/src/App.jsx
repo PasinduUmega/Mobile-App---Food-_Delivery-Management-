@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import './App.css';
-import { apiBase, fetchHealth, fetchStores } from './api';
+import { apiBase, fetchStatus, fetchStores } from './api';
 
 function App() {
-  const [health, setHealth] = useState(null);
+  const [status, setStatus] = useState(null);
   const [stores, setStores] = useState(null);
   const [err, setErr] = useState(null);
 
@@ -11,9 +11,9 @@ function App() {
     let cancelled = false;
     (async () => {
       try {
-        const [h, s] = await Promise.all([fetchHealth(), fetchStores()]);
+        const [systemStatus, s] = await Promise.all([fetchStatus(), fetchStores()]);
         if (!cancelled) {
-          setHealth(h);
+          setStatus(systemStatus);
           setStores(s);
         }
       } catch (e) {
@@ -33,11 +33,11 @@ function App() {
       </header>
       <main className="main">
         <section className="card">
-          <h2>Backend health</h2>
+          <h2>System status</h2>
           {err && <p className="err">{err}</p>}
-          {!err && health == null && <p>Checking…</p>}
-          {!err && health != null && (
-            <pre className="mono">{JSON.stringify(health, null, 2)}</pre>
+          {!err && status == null && <p>Checking…</p>}
+          {!err && status != null && (
+            <pre className="mono">{JSON.stringify(status, null, 2)}</pre>
           )}
         </section>
         <section className="card">

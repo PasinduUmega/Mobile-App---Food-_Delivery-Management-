@@ -1,0 +1,29 @@
+# Optional Render Blueprint: Dashboard → New → Blueprint → connect repo, or skip and create Web Service manually.
+# Set secret values in Render dashboard (never commit real secrets).
+
+services:
+  - type: web
+    name: food-rush-backend
+    runtime: node
+    region: oregon
+    plan: free
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/status
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      # PORT is set automatically by Render — do not define it here.
+      - key: MONGODB_URI
+        sync: false
+      - key: MONGODB_DB
+        value: food_rush
+      - key: BASE_URL
+        sync: false
+      - key: PAYPAL_ENV
+        value: sandbox
+      - key: PAYPAL_CLIENT_ID
+        sync: false
+      - key: PAYPAL_CLIENT_SECRET
+        sync: false

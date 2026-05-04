@@ -22,7 +22,7 @@ export default function HomeScreen({ navigation, isDarkMode, onThemeChanged }) {
   const load = useCallback(async () => {
     setError(null);
     try {
-      await api.health();
+      await api.status();
       const data = await api.listStores();
       setStores(Array.isArray(data?.items) ? data.items : []);
     } catch (e) {

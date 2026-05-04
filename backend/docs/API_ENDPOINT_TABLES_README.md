@@ -33,6 +33,23 @@ Sign-in responses return a **sanitized user JSON** (password hash stripped). **T
 
 ---
 
+## Menu management (`/api/menu_items`, `/api/menu`)
+
+| Method | Endpoint | Description | Protected |
+|--------|----------|-------------|-----------|
+| GET | `/api/menu_items` | List menu items (`storeId` query optional) | No |
+| GET | `/api/menu_items/:id` | Get one menu item by id | No |
+| POST | `/api/menu_items` | Create a menu item for a store (+ inventory row) | No |
+| PUT | `/api/menu_items/:id` | Update a menu item | No |
+| DELETE | `/api/menu_items/:id` | Delete a menu item (+ inventory cleanup) | No |
+| GET | `/api/menu` | Alias of menu list endpoint | No |
+| GET | `/api/menu/:id` | Alias of menu detail endpoint | No |
+| POST | `/api/menu` | Alias of menu create endpoint | No |
+| PUT | `/api/menu/:id` | Alias of menu update endpoint | No |
+| DELETE | `/api/menu/:id` | Alias of menu delete endpoint | No |
+
+---
+
 ## Orders & refund requests (`/api/orders`, `/api/refund-requests`)
 
 | Method | Endpoint | Description | Protected |

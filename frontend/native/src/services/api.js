@@ -67,8 +67,8 @@ class ApiClient {
     }
   }
 
-  health() {
-    return this.request('/health');
+  status() {
+    return this.request('/api/status');
   }
 
   listStores(params = {}) {

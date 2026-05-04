@@ -1,6 +1,9 @@
 # food_delivery
 
-Food Rush (Flutter) + Payments (PayPal/COD/Online Banking demo).
+Food Rush stack:
+- Backend: Node.js + Express.js
+- Frontend: React (web) + React Native (mobile)
+- Database: MongoDB
 
 ## Getting Started
 
@@ -33,12 +36,12 @@ Backend default: `http://localhost:8080`
 - `src/models/` — shared enums / constants (`constants.js`)  
 - `src/utils/` — parsers, request user header, formatting  
 - `src/config/mongo.js`, `src/bootstrap/`, `src/paypal.js`
-- `docs/API_ENDPOINTS.md` — full route list grouped by domain (incl. health, catalog, drivers, feedback)  
-- `docs/API_ENDPOINT_TABLES_README.md` — **seven** Swagger-style tables: Method · Endpoint · Description · Protected (Auth, Stores, Orders+refunds, Payments+receipts, Users, Deliveries, Carts)
+- `docs/API_ENDPOINTS.md` — full route list grouped by management component (users, orders/carts, inventory, menu, payments, admin/delivery, restaurants)  
+- `docs/API_ENDPOINT_TABLES_README.md` — Swagger-style tables: Method · Endpoint · Description · Protected (Auth, Stores, Menu, Orders+refunds, Payments+receipts, Users, Deliveries, Carts)
 
 ### Web dashboard (`frontend/` — Vite + React)
 
-In development, `/api` and `/health` are proxied to Express on port `8080` (see `frontend/vite.config.js`).
+In development, `/api` is proxied to Express on port `8080` (see `frontend/vite.config.js`).
 
 ```bash
 cd frontend
@@ -93,3 +96,8 @@ A few resources to get you started if this is your first Flutter project:
 For help getting started with Flutter development, view the
 [online documentation](https://docs.flutter.dev/), which offers tutorials,
 samples, guidance on mobile development, and a full API reference.
+
+Deploy Link
+Backend Deploy - https://railway.com/project/a1375673-02ff-4270-99c3-1dfc35628c2f?environmentId=69d04ead-3b2a-4592-ba89-8e6c52674abe 
+
+Frontedn Deploy - https://sparkling-strudel-8dbddb.netlify.app/

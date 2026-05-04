@@ -4,9 +4,9 @@ export function apiBase() {
   return raw || '';
 }
 
-export async function fetchHealth() {
-  const res = await fetch(`${apiBase()}/health`);
-  if (!res.ok) throw new Error(`Health ${res.status}`);
+export async function fetchStatus() {
+  const res = await fetch(`${apiBase()}/api/status`);
+  if (!res.ok) throw new Error(`Status ${res.status}`);
   return res.json();
 }
 

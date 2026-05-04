@@ -1,9 +1,11 @@
 import { Router } from 'express';
-import * as cat from '../controllers/catalog.controller.js';
+import * as menu from '../controllers/menuManagement.controller.js';
 
 const router = Router();
-router.post('/', cat.createMenuItem);
-router.put('/:id', cat.updateMenuItem);
-router.delete('/:id', cat.deleteMenuItem);
+router.get('/', menu.listMenuItems);
+router.get('/:id', menu.getMenuItem);
+router.post('/', menu.createMenuItem);
+router.put('/:id', menu.updateMenuItem);
+router.delete('/:id', menu.deleteMenuItem);
 
 export default router;

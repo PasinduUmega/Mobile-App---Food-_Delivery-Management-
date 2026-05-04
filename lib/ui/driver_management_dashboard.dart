@@ -159,7 +159,7 @@ class _DriverManagementDashboardState extends State<DriverManagementDashboard> {
               const SizedBox(height: 10),
               MobilePartitionCard(
                 title: 'Driver Summary',
-                subtitle: 'Quick health view for your delivery fleet.',
+                subtitle: 'Quick status view for your delivery fleet.',
                 child: Wrap(
                   spacing: 8,
                   runSpacing: 8,
